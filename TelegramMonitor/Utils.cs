@@ -2,28 +2,32 @@
 
 namespace TelegramMonitor;
 
-public static partial class Utils
+/// <summary>
+/// 提供通用工具方法的静态类，包含电话号码验证、日志记录、关键词处理等功能。
+/// </summary>
+public static class Utils
 {
-    // 使用编译过的正则表达式进行电话号码校验，提高匹配效率
-    // 正则要求:
-    // 1. 以 "+" 开头
-    // 2. 后跟 10~15 位数字（满足国际E.164标准）
-    private static readonly Regex PhoneNumberRegex = new Regex(@"^\+\d{10,15}$", RegexOptions.Compiled);
+    /// <summary>
+    /// 用于验证电话号码格式的编译后正则表达式
+    /// 格式要求：以"+"开头，后跟10-15位数字(E.164国际标准)
+    /// </summary>
+    private static readonly Regex PhoneNumberRegex = new(@"^\+\d{10,15}$", RegexOptions.Compiled);
 
     /// <summary>
-    /// 校验电话号码是否符合 E.164 格式要求（以 "+" 开头，后跟10至15位数字）。
+    /// 验证电话号码是否符合E.164国际标准格式
     /// </summary>
-    /// <param name="phoneNumber">需要验证的电话号码字符串</param>
-    /// <returns>若格式合法返回 true，否则返回 false</returns>
-    public static bool IsPhoneNumberValid(string phoneNumber) => PhoneNumberRegex.IsMatch(phoneNumber);
+    /// <param name="phoneNumber">待验证的电话号码字符串</param>
+    /// <returns>如果电话号码有效，返回true；否则返回false</returns>
+    public static bool IsPhoneNumberValid(string? phoneNumber) => 
+        !string.IsNullOrEmpty(phoneNumber) && PhoneNumberRegex.IsMatch(phoneNumber);
 
     /// <summary>
-    /// 打印日志信息到控制台，包含时间戳以帮助在生产环境中进行问题跟踪。
+    /// 记录日志信息
     /// </summary>
-    /// <param name="log">需要输出的日志内容</param>
-    public static void Log(string log)
+    /// <param name="message">日志信息内容</param>
+    public static void Log(string message)
     {
-        Console.WriteLine($"{DateTime.Now:yyyy-MM-dd HH:mm:ss}\t{log}");
+        Console.WriteLine($"[{DateTime.Now:yyyy-MM-dd HH:mm:ss}] {message}");
     }
 
     /// <summary>
@@ -50,84 +54,80 @@ public static partial class Utils
     }
 
     /// <summary>
-    /// 从指定的关键词文件中加载关键词列表。
-    /// 如果文件不存在则自动创建一个包含默认关键词内容的文件。
-    /// 方法将过滤掉空行和仅包含空白字符的行，并返回剩余行的列表。
+    /// 从指定文件路径加载关键词列表
     /// </summary>
-    /// <param name="filePath">关键词文件的路径。</param>
-    /// <returns>包含非空行的字符串列表，如果读取失败或为空则返回空列表。</returns>
+    /// <param name="filePath">关键词文件路径</param>
+    /// <returns>返回关键词列表</returns>
     public static List<string> LoadKeywords(string filePath)
     {
         if (string.IsNullOrWhiteSpace(filePath))
         {
-            Utils.Log("关键词文件路径无效，返回空列表。");
+            Log("无效的关键词文件路径");
             return new List<string>();
         }
 
         try
         {
-            // 如果文件不存在则创建默认文件并写入默认关键词内容
-            if (!System.IO.File.Exists(filePath))
+            if (!File.Exists(filePath))
             {
-                Utils.Log("关键词文件未找到，正在创建新文件...");
-
-                // 默认关键词内容
-                string defaultContent = $"关键词说明:{Environment.NewLine}" +
-                    $"第一行是全字匹配，只匹配含有关键词1的消息{Environment.NewLine}" +
-                    $"第二行是模糊匹配，匹配含有关键词2和关键词3同时存在的消息{Environment.NewLine}" +
-                    $"第三行是模糊匹配，匹配含有关键词4和关键词5同时存在的消息{Environment.NewLine}" +
-                    $"所有匹配的关键词不区分大小写{Environment.NewLine}" +
-                    $"关键词1{Environment.NewLine}" +
-                    $"关键词2?关键词3{Environment.NewLine}" +
-                    $"关键词4?关键词5";
-                System.IO.File.WriteAllText(filePath, defaultContent);
+                CreateDefaultKeywordsFile(filePath);
             }
 
-            // 读取文件的所有行，过滤掉空行或空白行 并转换为小写
-            var lines = System.IO.File.ReadAllLines(filePath)
-                                      .Where(line => !string.IsNullOrWhiteSpace(line))
-                                      .Select(k => k.ToLower())
-                                      .ToList();
-
-            return lines;
+            return File.ReadAllLines(filePath)
+                      .Where(line => !string.IsNullOrWhiteSpace(line))
+                      .Select(line => line.ToLowerInvariant())
+                      .ToList();
         }
         catch (Exception ex)
         {
-            // 捕获并记录异常，返回空列表以避免外部逻辑中断
-            Utils.Log($"读取关键词文件时发生错误: {ex.Message}");
+            Log($"读取关键词文件失败: {ex.Message}");
             return new List<string>();
         }
     }
 
     /// <summary>
-    /// 从给定消息文本中查找与关键词列表匹配的关键词集合。
-    /// 匹配规则：
-    /// 每个关键词可能包含多个用 "?" 分隔的子关键词，只有当消息文本中全部子关键词都出现时才算匹配。
+    /// 获取与消息匹配的关键词列表
     /// </summary>
-    /// <param name="messageLower">已转换为小写的消息内容</param>
+    /// <param name="message">待匹配的消息内容</param>
     /// <param name="keywords">关键词列表</param>
-    /// <returns>所有匹配成功的关键词列表</returns>
-    public static List<string> GetMatchingKeywords(string messageLower, List<string> keywords)
+    /// <returns>返回匹配的关键词列表</returns>
+    public static List<string> GetMatchingKeywords(string message, List<string> keywords)
     {
-        var matched = new List<string>();
-
-        foreach (var keyword in keywords)
+        if (string.IsNullOrEmpty(message) || keywords == null || !keywords.Any())
         {
-            // 拆分子关键词并去除多余空白字符
-            var keywordParts = keyword
-                .Split('?')
-                .Select(k => k.Trim())
-                .Where(k => !string.IsNullOrEmpty(k))
-                .ToList();
-
-            // 判断该关键词中的所有子关键词是否都出现在消息中
-            bool isMatch = keywordParts.All(kw => messageLower.Contains(kw));
-            if (isMatch)
-            {
-                matched.Add(keyword);
-            }
+            return new List<string>();
         }
 
-        return matched;
+        var messageLower = message.ToLowerInvariant();
+        return keywords.Where(keyword =>
+        {
+            var parts = keyword.Split('?', StringSplitOptions.RemoveEmptyEntries)
+                              .Select(k => k.Trim())
+                              .Where(k => !string.IsNullOrEmpty(k))
+                              .ToArray();
+            
+            return parts.Length > 0 && parts.All(part => 
+                messageLower.Contains(part, StringComparison.OrdinalIgnoreCase));
+        }).ToList();
+    }
+
+    /// <summary>
+    /// 创建默认的关键词文件
+    /// </summary>
+    /// <param name="filePath">关键词文件路径</param>
+    private static void CreateDefaultKeywordsFile(string filePath)
+    {
+        Log("创建默认关键词文件...");
+        const string defaultContent = 
+            "# 关键词配置说明\n" +
+            "# 1. 每行一个关键词规则\n" +
+            "# 2. 使用?分隔多个关键词，表示AND关系\n" +
+            "# 3. 不区分大小写\n" +
+            "# 4. 支持模糊匹配\n\n" +
+            "关键词1\n" +
+            "关键词2?关键词3\n" +
+            "关键词4?关键词5";
+        
+        File.WriteAllText(filePath, defaultContent);
     }
 }

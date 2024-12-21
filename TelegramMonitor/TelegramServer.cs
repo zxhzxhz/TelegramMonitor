@@ -117,7 +117,7 @@ public class TelegramServer
         var dialogs = await _client.Messages_GetAllDialogs();
 
         // 载入关键词列表
-        _keywords = Utils.LoadKeywords(Constants.KeywordsFile);
+        _keywords = Utils.LoadKeywords(Constants.KEYWORDS_FILE_PATH);
 
         // 从 API 获取外部数据（如广告内容）
         _data = await PeriodicHttpRequest.FetchAndProcessDataAsync();
