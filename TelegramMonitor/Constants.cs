@@ -7,10 +7,12 @@ public static class Constants
 {
     // Telegram凭据
     public const int TELEGRAM_API_ID = 23319500;
+
     public const string TELEGRAM_API_HASH = "814ac0dd67f660119b9b990d514c9a47";
 
     // 文件配置
     public const string LOG_FILE_PATH = "TelegramBot.log";
+
     public const string KEYWORDS_FILE_PATH = "keywords.txt";
 
     // API地址
@@ -18,4 +20,10 @@ public static class Constants
 
     // 轮询间隔(秒)
     public const int POLLING_INTERVAL_SECONDS = 300; // 5分钟
+
+    //关键词列表
+    public static List<string> KEYWORDS = new();
+
+    //广告列表
+    public static List<string> DATA = new();
 }

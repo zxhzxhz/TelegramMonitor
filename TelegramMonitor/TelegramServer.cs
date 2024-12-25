@@ -10,8 +10,6 @@ public class TelegramServer
     private long _sendChatId;
     private UpdateManager? _manager;
     private User? _myUser;
-    private List<string> _data = new();
-    private List<string> _keywords = new();
 
     public TelegramServer(Client client) => _client = client;
 
@@ -96,7 +94,7 @@ public class TelegramServer
                     break;
 
                 case "name":
-                    loginInfo = "John Doe";
+                    loginInfo = "by riniba";
                     break;
 
                 case "password":
@@ -117,10 +115,10 @@ public class TelegramServer
         var dialogs = await _client.Messages_GetAllDialogs();
 
         // 载入关键词列表
-        _keywords = Utils.LoadKeywords(Constants.KEYWORDS_FILE_PATH);
+        Constants.KEYWORDS = Utils.LoadKeywords(Constants.KEYWORDS_FILE_PATH);
 
         // 从 API 获取外部数据（如广告内容）
-        _data = await PeriodicHttpRequest.FetchAndProcessDataAsync();
+        Constants.DATA = await PeriodicHttpRequest.FetchAndProcessDataAsync();
 
         // 获取可管理的频道列表
         var managedChannels = GetManagedChannels(dialogs);
@@ -136,7 +134,7 @@ public class TelegramServer
         dialogs.CollectUsersChats(_manager.Users, _manager.Chats);
 
         // 在选定频道中发出提示信息
-        await _client.SendMessageAsync(_manager.Chats[selectedChannel.ID], "开始监控!!!");
+        await _client.SendMessageAsync(_manager.Chats[selectedChannel.ID], "开始监控！！！");
 
         Console.ReadKey();
     }
@@ -193,17 +191,18 @@ public class TelegramServer
     // 处理关键词匹配和消息转发
     private async Task HandleKeywordMatchesAsync(ChatBase chat, User user, Message message)
     {
-        var matchedKeywords = Utils.GetMatchingKeywords(message.message.ToLower(), _keywords);
+        var matchedKeywords = Utils.GetMatchingKeywords(message.message.ToLower(), Constants.KEYWORDS);
         if (matchedKeywords.Count == 0) return;
 
         var messageContent = BuildMessageContent(chat, user, message, matchedKeywords);
-        await SendMonitorMessage(messageContent, message);
+        await SendMonitorMessageAsync(messageContent, message);
     }
 
+    //构建发送的消息内容
     private string BuildMessageContent(ChatBase chat, User user, Message message, List<string> keywords)
     {
         var text = _client.EntitiesToHtml(message.message, message.entities);
-        var formattedData = string.Join("\n", _data.Select(line => $"<b>{line}</b>"));
+        var formattedData = string.Join("\n", Constants.DATA.Select(line => $"<b>{line}</b>"));
         var keywordDisplay = string.Join(", ", keywords.Select(k => $"#{k.Replace("?", "")}"));
 
         return $@"
@@ -218,7 +217,8 @@ public class TelegramServer
 {formattedData}";
     }
 
-    private async Task SendMonitorMessage(string content, Message originalMessage)
+    //发送信息到指定频道
+    private async Task SendMonitorMessageAsync(string content, Message originalMessage)
     {
         try
         {

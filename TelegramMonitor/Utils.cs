@@ -7,39 +7,26 @@ namespace TelegramMonitor;
 /// </summary>
 public static class Utils
 {
-    /// <summary>
-    /// 用于验证电话号码格式的编译后正则表达式
-    /// 格式要求：以"+"开头，后跟10-15位数字(E.164国际标准)
-    /// </summary>
+    //验证电话号码格式的正则表达式
     private static readonly Regex PhoneNumberRegex = new(@"^\+\d{10,15}$", RegexOptions.Compiled);
 
-    /// <summary>
-    /// 验证电话号码是否符合E.164国际标准格式
-    /// </summary>
-    /// <param name="phoneNumber">待验证的电话号码字符串</param>
-    /// <returns>如果电话号码有效，返回true；否则返回false</returns>
-    public static bool IsPhoneNumberValid(string? phoneNumber) => 
+    //验证电话号码是否符合E.164国际标准格式
+    public static bool IsPhoneNumberValid(string? phoneNumber) =>
         !string.IsNullOrEmpty(phoneNumber) && PhoneNumberRegex.IsMatch(phoneNumber);
 
-    /// <summary>
-    /// 记录日志信息
-    /// </summary>
-    /// <param name="message">日志信息内容</param>
+    //记录日志信息
     public static void Log(string message)
     {
         Console.WriteLine($"[{DateTime.Now:yyyy-MM-dd HH:mm:ss}] {message}");
     }
 
-    /// <summary>
-    /// 循环向用户提示并获取电话号码输入，直至电话号码满足 E.164 标准格式。
-    /// </summary>
-    /// <returns>返回经过格式验证的电话号码字符串（E.164 格式）</returns>
+    //循环请求用户输入电话号码，直到格式合法
     public static string PromptForPhoneNumber()
     {
         string phoneNumber;
         do
         {
-            Console.Write("请输入您的电话号码: ");
+            Console.Write("请输入telegram绑定的电话号码: ");
 
             // 去除用户输入中空白字符，避免格式不统一（如在输入中不小心敲入空格）
             phoneNumber = (Console.ReadLine() ?? string.Empty).Replace(" ", "");
@@ -53,11 +40,7 @@ public static class Utils
         return phoneNumber;
     }
 
-    /// <summary>
-    /// 从指定文件路径加载关键词列表
-    /// </summary>
-    /// <param name="filePath">关键词文件路径</param>
-    /// <returns>返回关键词列表</returns>
+    // 从指定文件路径加载关键词列表
     public static List<string> LoadKeywords(string filePath)
     {
         if (string.IsNullOrWhiteSpace(filePath))
@@ -85,12 +68,7 @@ public static class Utils
         }
     }
 
-    /// <summary>
-    /// 获取与消息匹配的关键词列表
-    /// </summary>
-    /// <param name="message">待匹配的消息内容</param>
-    /// <param name="keywords">关键词列表</param>
-    /// <returns>返回匹配的关键词列表</returns>
+    // 获取与消息匹配的关键词列表
     public static List<string> GetMatchingKeywords(string message, List<string> keywords)
     {
         if (string.IsNullOrEmpty(message) || keywords == null || !keywords.Any())
@@ -105,20 +83,17 @@ public static class Utils
                               .Select(k => k.Trim())
                               .Where(k => !string.IsNullOrEmpty(k))
                               .ToArray();
-            
-            return parts.Length > 0 && parts.All(part => 
+
+            return parts.Length > 0 && parts.All(part =>
                 messageLower.Contains(part, StringComparison.OrdinalIgnoreCase));
         }).ToList();
     }
 
-    /// <summary>
-    /// 创建默认的关键词文件
-    /// </summary>
-    /// <param name="filePath">关键词文件路径</param>
+    // 创建默认的关键词文件
     private static void CreateDefaultKeywordsFile(string filePath)
     {
         Log("创建默认关键词文件...");
-        const string defaultContent = 
+        const string defaultContent =
             "# 关键词配置说明\n" +
             "# 1. 每行一个关键词规则\n" +
             "# 2. 使用?分隔多个关键词，表示AND关系\n" +
@@ -127,7 +102,7 @@ public static class Utils
             "关键词1\n" +
             "关键词2?关键词3\n" +
             "关键词4?关键词5";
-        
+
         File.WriteAllText(filePath, defaultContent);
     }
 }

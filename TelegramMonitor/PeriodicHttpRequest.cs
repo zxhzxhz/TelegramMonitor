@@ -2,9 +2,7 @@
 
 namespace TelegramMonitor;
 
-/// <summary>
-/// 定期向发送HTTP请求获取广告数据。
-/// </summary>
+//定时请求类
 public class PeriodicHttpRequest
 {
     private static readonly HttpClient _httpClient = new();
@@ -25,14 +23,15 @@ public class PeriodicHttpRequest
         }, null, TimeSpan.FromSeconds(Constants.POLLING_INTERVAL_SECONDS), TimeSpan.FromSeconds(Constants.POLLING_INTERVAL_SECONDS));
     }
 
-    /// <summary>
-    /// 获取并处理广告数据
-    /// </summary>
-    /// <returns>广告内容列表。若获取失败则返回空列表</returns>
+    // 处理定时任务
     public static async Task<List<string>> FetchAndProcessDataAsync()
     {
         try
         {
+            Utils.Log("开始更新关键词列表...");
+            // 载入关键词列表
+            Constants.KEYWORDS = Utils.LoadKeywords(Constants.KEYWORDS_FILE_PATH);
+
             Utils.Log("开始获取广告数据...");
             var response = await _httpClient.GetStringAsync(Constants.MONITOR_API_ENDPOINT);
             var result = JsonConvert.DeserializeObject<HttpReturn>(response);
