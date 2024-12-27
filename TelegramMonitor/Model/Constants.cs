@@ -22,8 +22,8 @@ public static class Constants
     public const int POLLING_INTERVAL_SECONDS = 300; // 5分钟
 
     //关键词列表
-    public static List<string> KEYWORDS = new();
+    public static List<string> KEYWORDS = [];
 
     //广告列表
-    public static List<string> DATA = new();
+    public static List<string> DATA = [];
 }

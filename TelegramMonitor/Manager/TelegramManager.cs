@@ -1,17 +1,24 @@
-﻿using TL;
+﻿using Spectre.Console;
+using System.Data;
+using TL;
 using WTelegram;
 
 namespace TelegramMonitor;
 
 // Telegram客户端交互类
-public class TelegramServer
+public class TelegramManager
 {
     private readonly Client _client;
+    private readonly PeriodicTaskManager _taskManager;
     private long _sendChatId;
     private UpdateManager? _manager;
     private User? _myUser;
 
-    public TelegramServer(Client client) => _client = client;
+    public TelegramManager(Client client)
+    {
+        _client = client;
+        _taskManager = new PeriodicTaskManager();
+    }
 
     private ChatBase? ChatBase(long id) => _manager?.Chats.GetValueOrDefault(id);
 
@@ -28,29 +35,72 @@ public class TelegramServer
         }
         catch (Exception ex)
         {
-            Utils.Log($"处理Update时发生异常: {ex.Message}");
+            LogExtensions.Error($"处理Update时发生异常: {ex.Message}");
         }
     }
 
+    // 处理更新事件
     private async Task ProcessUpdateAsync(Update update)
     {
-        if (update is UpdateNewMessage unm)
-            await HandleMessageAsync(unm.message);
-        else if (update is UpdateEditMessage uem)
-            await HandleMessageAsync(uem.message, true);
-        else if (update is UpdateDeleteChannelMessages udcm)
-            Utils.Log($"{udcm.messages.Length} messages deleted in {ChatBase(udcm.channel_id)}");
-        else if (update is UpdateDeleteMessages udm)
-            Utils.Log($"{udm.messages.Length} messages deleted");
-        else if (update is UpdateUserTyping uut)
-            Utils.Log($"{User(uut.user_id)} is {uut.action}");
-        else
-            Utils.Log(update.GetType().Name);
+        switch (update)
+        {
+            case UpdateNewMessage unm:
+                await HandleMessageAsync(unm.message);
+                break;
+
+            case UpdateEditMessage uem:
+                LogExtensions.Debug($"{User(uem.message.From)} edited a message  in {ChatBase(uem.message.Peer)}");
+                break;
+
+            case UpdateDeleteChannelMessages udcm:
+                LogExtensions.Debug($"{udcm.messages.Length} messages deleted in {ChatBase(udcm.channel_id)}");
+                break;
+
+            case UpdateDeleteMessages udm:
+                LogExtensions.Debug($"{udm.messages.Length} messages deleted ");
+                break;
+
+            case UpdateUserTyping uut:
+                LogExtensions.Debug($"{User(uut.user_id)} is {uut.action}");
+                break;
+
+            case UpdateChatUserTyping ucut:
+                LogExtensions.Debug($"{Peer(ucut.from_id)} is {ucut.action} in {ChatBase(ucut.chat_id)}");
+                break;
+
+            case UpdateChannelUserTyping ucut2:
+                LogExtensions.Debug($"{Peer(ucut2.from_id)} is {ucut2.action} in {ChatBase(ucut2.channel_id)}");
+                break;
+
+            case UpdateChatParticipants { participants: ChatParticipants cp }:
+                LogExtensions.Debug($"{cp.participants.Length} participants in {ChatBase(cp.chat_id)}");
+                break;
+
+            case UpdateUserStatus uus:
+                LogExtensions.Debug($"{User(uus.user_id)} is now {uus.status.GetType().Name[10..]}");
+                break;
+
+            case UpdateUserName uun:
+                LogExtensions.Debug($"{User(uun.user_id)} changed profile name: {uun.first_name} {uun.last_name}");
+                break;
+
+            case UpdateUser uu:
+                LogExtensions.Debug($"{User(uu.user_id)} changed infos/photo");
+                break;
+
+            default:
+                LogExtensions.Debug(update.GetType().Name);
+                break;
+        }
     }
 
     // 处理接收到的消息
     private async Task HandleMessageAsync(MessageBase messageBase, bool edit = false)
     {
+        if (edit)
+        {
+            return;
+        }
         try
         {
             switch (messageBase)
@@ -60,13 +110,13 @@ public class TelegramServer
                     break;
 
                 case MessageService ms:
-                    Utils.Log($"{Peer(ms.from_id)} in {Peer(ms.peer_id)} [{ms.action.GetType().Name[13..]}]");
+                    LogExtensions.Debug($"{Peer(ms.from_id)} in {Peer(ms.peer_id)} [{ms.action.GetType().Name[13..]}]");
                     break;
             }
         }
         catch (Exception ex)
         {
-            Utils.Log($"处理消息时发生异常: {ex.Message}");
+            LogExtensions.Error($"处理消息时发生异常: {ex.Message}");
         }
     }
 
@@ -82,14 +132,13 @@ public class TelegramServer
     // 执行登录流程
     public async Task DoLoginAsync(string loginInfo)
     {
-        // 执行多步登录过程
         while (_client.User == null)
         {
             var what = await _client.Login(loginInfo);
             switch (what)
             {
                 case "verification_code":
-                    Console.Write("验证码: ");
+                    LogExtensions.Prompts("验证码: ");
                     loginInfo = Console.ReadLine() ?? string.Empty;
                     break;
 
@@ -98,7 +147,7 @@ public class TelegramServer
                     break;
 
                 case "password":
-                    Console.Write("二级密码: ");
+                    LogExtensions.Prompts("二级密码: ");
                     loginInfo = Console.ReadLine() ?? string.Empty;
                     break;
 
@@ -109,91 +158,91 @@ public class TelegramServer
         }
 
         _myUser = _client.User;
-        Utils.Log($"监控人员: {_myUser} (id {_myUser.id}) 启动成功!");
+        LogExtensions.Info($"监控人员: {_myUser} (id {_myUser.id}) 启动成功!");
 
         // 获取所有对话信息填充 Manager 的字典
         var dialogs = await _client.Messages_GetAllDialogs();
 
         // 载入关键词列表
-        Constants.KEYWORDS = Utils.LoadKeywords(Constants.KEYWORDS_FILE_PATH);
+        FileExtensions.LoadKeywords(Constants.KEYWORDS_FILE_PATH);
 
         // 从 API 获取外部数据（如广告内容）
-        Constants.DATA = await PeriodicHttpRequest.FetchAndProcessDataAsync();
+        await HttpExtensions.FetchAndProcessDataAsync();
 
-        // 获取可管理的频道列表
-        var managedChannels = GetManagedChannels(dialogs);
-        var selectedChannel = SelectChannel(managedChannels);
+        // 选择可管理的频道
+        GetManagedChannels(dialogs);
 
-        Utils.Log($"您已选择频道：{selectedChannel.Title} (ID: {selectedChannel.ID})");
+        LogExtensions.Info("开始工作!...");
+        // 启动定时任务
+        _taskManager.Start();
 
-        // 设置要发送消息的频道ID
-        _sendChatId = selectedChannel.id;
-
-        Utils.Log("开始工作!...");
         _manager = _client.WithUpdateManager(Client_OnUpdate);
         dialogs.CollectUsersChats(_manager.Users, _manager.Chats);
 
         // 在选定频道中发出提示信息
-        await _client.SendMessageAsync(_manager.Chats[selectedChannel.ID], "开始监控！！！");
+        await _client.SendMessageAsync(_manager.Chats[_sendChatId], "软件就绪!开始监控！");
 
         Console.ReadKey();
     }
 
     // 获取可管理的频道列表
-    private List<Channel> GetManagedChannels(Messages_Dialogs dialogs)
+    private void GetManagedChannels(Messages_Dialogs dialogs)
     {
         var managedChannels = new List<Channel>();
+        Channel? selectedChannel = null;
+
+        // 创建选择提示
+        var prompt = new SelectionPrompt<Channel>()
+            .Title("选择监控消息发布的频道");
+
+        // 添加符合条件的频道到 SelectionPrompt 和列表
         foreach (var (id, chat) in dialogs.chats)
         {
             if (chat.IsActive && chat.IsChannel && chat is Channel channel)
             {
                 if (channel.admin_rights?.flags.HasFlag(ChatAdminRights.Flags.post_messages) ?? false)
                 {
-                    Utils.Log($"管理频道：{channel.Title} (ID: {channel.ID})");
                     managedChannels.Add(channel);
+                    prompt.AddChoice(channel);  // 直接添加 Channel 对象
                 }
             }
         }
-        return managedChannels;
-    }
 
-    // 选择一个频道作为消息发布目标
-    private Channel SelectChannel(List<Channel> managedChannels)
-    {
-        Channel? selectedChannel = null;
+        // 选择频道
         while (selectedChannel == null)
         {
-            Console.Write("选择已有的管理频道ID用于发布监控信息(按enter键选择第一个): ");
-            string input = Console.ReadLine() ?? string.Empty;
+            LogExtensions.Prompts("选择已有的管理频道ID用于发布监控信息:");
 
-            if (string.IsNullOrWhiteSpace(input))
+            // 在面板中展示选择项
+            selectedChannel = AnsiConsole.Prompt(prompt);
+
+            if (selectedChannel == null)
             {
-                // 用户直接回车则默认选择列表中的第一个频道
-                selectedChannel = managedChannels.First();
-            }
-            else if (long.TryParse(input, out long channelId))
-            {
-                selectedChannel = managedChannels.FirstOrDefault(c => c.ID == channelId);
-                if (selectedChannel == null)
-                {
-                    Utils.Log("无效的频道ID，请重新输入。");
-                }
-            }
-            else
-            {
-                Utils.Log("请输入有效的频道ID（数字）或按 Enter 键选择第一个频道。");
+                LogExtensions.Error("无效的频道ID，请重新选择一个有效的频道。");
             }
         }
-
-        return selectedChannel;
+        LogExtensions.Info($"您已选择频道：{selectedChannel.Title} (ID: {selectedChannel.ID})");
+        // 设置要发送消息的频道ID
+        _sendChatId = selectedChannel.id;
     }
 
-    // 处理关键词匹配和消息转发
+    //处理消息关键词
     private async Task HandleKeywordMatchesAsync(ChatBase chat, User user, Message message)
     {
-        var matchedKeywords = Utils.GetMatchingKeywords(message.message.ToLower(), Constants.KEYWORDS);
-        if (matchedKeywords.Count == 0) return;
+        if (string.IsNullOrWhiteSpace(message.message))
+        {
+            return;
+        }
+        LogExtensions.Debug($"{GetTelegramNickName(user)} （ID:{user.id}） 在 {chat.Title} 中发送：{message.message}");
+        // 使用 GetMatchingKeywords 方法处理消息，返回匹配的关键词
+        var matchedKeywords = FileExtensions.GetMatchingKeywords(message.message.ToLower(), Constants.KEYWORDS);
+        if (matchedKeywords.Count == 0)
+        {
+            LogExtensions.Debug($"无匹配关键词，跳过");
+            return;  // 如果没有匹配的关键词，直接返回
+        }
 
+        // 构建消息内容并发送
         var messageContent = BuildMessageContent(chat, user, message, matchedKeywords);
         await SendMonitorMessageAsync(messageContent, message);
     }
@@ -204,6 +253,7 @@ public class TelegramServer
         var text = _client.EntitiesToHtml(message.message, message.entities);
         var formattedData = string.Join("\n", Constants.DATA.Select(line => $"<b>{line}</b>"));
         var keywordDisplay = string.Join(", ", keywords.Select(k => $"#{k.Replace("?", "")}"));
+        LogExtensions.Warning($"匹配到关键词{keywordDisplay}");
 
         return $@"
 <b>命中关键词：</b>{keywordDisplay}
@@ -233,7 +283,7 @@ public class TelegramServer
         }
         catch (Exception ex)
         {
-            Utils.Log($"发送消息失败: {ex.Message}");
+            LogExtensions.Error($"发送消息失败: {ex.Message}");
         }
     }
 
