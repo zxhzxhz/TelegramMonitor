@@ -8,6 +8,7 @@
 # Telegram关键词监控 使用说明
 
 ## 系统与环境要求
+- 最新发布版下载地址:https://github.com/Riniba/TelegramMonitor/releases/latest
 - 发布包提供常见的系统版本均不包含运行时。  
 - 使用前需安装微软运行时环境包(.NET 运行时 9.0)：  
   下载地址：[https://dotnet.microsoft.com/zh-cn/download/dotnet/9.0](https://dotnet.microsoft.com/zh-cn/download/dotnet/9.0)  
