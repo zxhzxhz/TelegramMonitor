@@ -8,7 +8,7 @@
 # Telegram关键词监控 使用说明
 
 ## 系统与环境要求
-- 最新发布版下载地址:https://github.com/Riniba/TelegramMonitor/releases/latest
+- 最新发布版下载：https://github.com/Riniba/TelegramMonitor/releases/latest
 - 发布包提供常见的系统版本均不包含运行时。  
 - 使用前需安装微软运行时环境包(.NET 运行时 9.0)：  
   下载地址：[https://dotnet.microsoft.com/zh-cn/download/dotnet/9.0](https://dotnet.microsoft.com/zh-cn/download/dotnet/9.0)  
@@ -27,9 +27,10 @@
 3. 输入已经准备好的 Telegram 账号的手机号码，例如：`+8618888888888`。
 4. 根据提示输入验证码或二级密码（首次登录时需要，成功登录后再次运行则无需）。
 5. 成功登录后，程序会列出您拥有发布权限的频道名称和对应的频道 ID，并提示您选择频道。
-6. 如果只有一个频道或列表第一个频道即为目标频道，直接按下 Enter 键选择即可；若不是，请输入相应频道的 ID 后按 Enter 键选择。
+6. 最新版的需要用键盘↑↓键选择你要发布消息的频道，然后按 Enter 键选择就行了。
 7. 选择完成后，软件会提示已经开始工作，并在所选频道发布一条消息“开始工作”作为标记。
 8. 此后请保持软件运行，关闭软件将无法继续监听群消息。
+9. 如果需要停止软件请在那个黑框框里面输入stop 然后按Enter键就可以退出软件了 当然最简单的是直接右上角点X关闭
 
 ## 关键词设置
 - 关键词文件为 `keyword.txt`，软件开始工作后会自动在同级目录创建该文件（也可手动提前创建）。
@@ -50,7 +51,7 @@
 ## 其他说明
 - 本软件免费无毒，可在虚拟机中运行进行长期挂机。
 - 有问题请联系 Telegram：[https://t.me/Riniba](https://t.me/Riniba)
-- Telegram交流群组 [t.me/RinibaGroup](https://t.me/RinibaGroup)
+- Telegram交流群组 [https://t.me/RinibaGroup](https://t.me/RinibaGroup)
 
   
 
