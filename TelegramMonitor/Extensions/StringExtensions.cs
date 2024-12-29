@@ -8,9 +8,9 @@ namespace TelegramMonitor;
 public static class StringExtensions
 {
     //验证电话号码格式的正则表达式
-    private static readonly Regex PhoneNumberRegex = new(@"^\+\d{10,15}$", RegexOptions.Compiled);
+    private static readonly Regex PhoneNumberRegex = new(@"^\+\d{6,15}$", RegexOptions.Compiled);
 
-    //验证电话号码是否符合E.164国际标准格式
+    //验证电话号码是否合理
     public static bool IsPhoneNumberValid(string? phoneNumber) =>
         !string.IsNullOrEmpty(phoneNumber) && PhoneNumberRegex.IsMatch(phoneNumber);
 
