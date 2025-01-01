@@ -24,8 +24,6 @@ public static class LogExtensions
         AnsiConsole.MarkupLine("");
         AnsiConsole.MarkupLine("[bold red]不得利用本项目从事危害国家安全、扰乱社会秩序、侵犯他人合法权益等法律法规禁止的活动！任何基于本项目二次开发而产生的一切法律纠纷和责任，我们不承担任何责任！[/]");
         AnsiConsole.MarkupLine("");
-
-
     }
 
     // 公共时间格式
@@ -35,13 +33,13 @@ public static class LogExtensions
     private static void WriteLog(string message, string color)
     {
         var timestamp = GetTimestamp();
-        AnsiConsole.MarkupLine($"[{color}][[{timestamp}]]  {message}[/]");
+        AnsiConsole.MarkupLine($"[{color}][[{timestamp}]]  {message.Replace("[", "[[").Replace("]", "]]")}[/]");
     }
 
     // 输出普通的提示信息（可以为任何消息类型）
     public static void Prompts(string message)
     {
-        var rule = new Rule($"[bold blue]{message}[/]");
+        var rule = new Rule($"[bold blue]{message.Replace("[", "[[").Replace("]", "]]")}[/]");
         rule.Justification = Justify.Left;
         AnsiConsole.Write(rule);
     }
