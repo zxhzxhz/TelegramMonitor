@@ -9,11 +9,9 @@
 
 ## 系统与环境要求
 - 最新发布版下载：https://github.com/Riniba/TelegramMonitor/releases/latest
-- 发布包提供常见的系统版本均不包含运行时。  
-- 使用前需安装微软运行时环境包(.NET 运行时 9.0)：  
-  下载地址：[https://dotnet.microsoft.com/zh-cn/download/dotnet/9.0](https://dotnet.microsoft.com/zh-cn/download/dotnet/9.0)  
+- 发布包提供常见的系统版本已经包含运行时。  
 - 如需其他可自行编译
-- 请注意 使用时需具备全局代理或能直连 Telegram。  
+- 请注意 使用时需具备**全局代理**或能**直连 Telegram**。  
 
 ## 账号与频道准备
 - 准备一个 Telegram 账号，该账号需拥有一个或多个可发布消息的频道（Channel）。
