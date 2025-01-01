@@ -11,13 +11,13 @@ on:
 
 permissions:
   contents: write
-  workflows: write
+  actions: write   # 替换 workflows 为 actions
 
 jobs:
   build:
     runs-on: ubuntu-latest
     strategy:
-      fail-fast: false  # 允许其他平台继续构建，即使某个平台失败
+      fail-fast: false
       matrix:
         include:
           - name: "linux-64"
@@ -46,7 +46,7 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v4
         with:
-          fetch-depth: 0  # 获取完整的历史记录用于版本号生成
+          fetch-depth: 0
 
       - name: Setup .NET
         uses: actions/setup-dotnet@v3
@@ -65,26 +65,22 @@ jobs:
         id: version
         shell: bash
         run: |
-          # 从 csproj 文件中获取版本号，如果失败则使用日期作为版本号
           VERSION=$(grep -oPm1 "(?<=<Version>)[^<]+" **/*.csproj 2>/dev/null) || VERSION=$(date +'%Y.%m.%d.%H%M')
           echo "VERSION=${VERSION}" >> $GITHUB_OUTPUT
           echo "Version: ${VERSION}"
 
       - name: Publish (.NET, framework-dependent)
         run: |
-          # 还原依赖
           if ! dotnet restore; then
             echo "::error::Restore failed"
             exit 1
           fi
 
-          # 发布
           if ! dotnet publish --configuration Release -r ${{ matrix.rid }} -o out/${{ matrix.rid }}; then
             echo "::error::Publish failed"
             exit 1
           fi
 
-          # 创建压缩包
           cd out/${{ matrix.rid }}
           if ! zip -r ../${{ matrix.artifact_name }} .; then
             echo "::error::Zip failed"
@@ -97,7 +93,7 @@ jobs:
         with:
           name: ${{ matrix.name }}
           path: out/${{ matrix.artifact_name }}
-          retention-days: 1  # 设置保留期为1天以节省存储空间
+          retention-days: 1
 
   release:
     runs-on: ubuntu-latest
