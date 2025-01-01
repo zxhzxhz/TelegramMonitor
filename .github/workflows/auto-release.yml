@@ -4,6 +4,10 @@ on:
   push:
     branches:
       - main
+    paths-ignore:
+      - '**.md'
+      - '.gitignore'
+      - '.editorconfig'
 
 permissions:
   contents: write
@@ -13,6 +17,7 @@ jobs:
   build:
     runs-on: ubuntu-latest
     strategy:
+      fail-fast: false  # 允许其他平台继续构建，即使某个平台失败
       matrix:
         include:
           - name: "linux-64"
@@ -21,14 +26,12 @@ jobs:
           - name: "linux-arm64"
             rid: "linux-arm64"
             artifact_name: "TelegramMonitor-linux-arm64.zip"
-
           - name: "osx-64"
             rid: "osx-x64"
             artifact_name: "TelegramMonitor-osx-64.zip"
           - name: "osx-arm64"
             rid: "osx-arm64"
             artifact_name: "TelegramMonitor-osx-arm64.zip"
-
           - name: "windows-32"
             rid: "win-x86"
             artifact_name: "TelegramMonitor-windows-32.zip"
@@ -40,103 +43,106 @@ jobs:
             artifact_name: "TelegramMonitor-windows-arm64.zip"
 
     steps:
-      - name: Checkout
-        uses: actions/checkout@v3
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0  # 获取完整的历史记录用于版本号生成
 
       - name: Setup .NET
         uses: actions/setup-dotnet@v3
         with:
           dotnet-version: '9.0.101'
 
+      - name: Cache NuGet packages
+        uses: actions/cache@v3
+        with:
+          path: ~/.nuget/packages
+          key: ${{ runner.os }}-nuget-${{ hashFiles('**/packages.lock.json') }}
+          restore-keys: |
+            ${{ runner.os }}-nuget-
+
+      - name: Get Version
+        id: version
+        shell: bash
+        run: |
+          # 从 csproj 文件中获取版本号，如果失败则使用日期作为版本号
+          VERSION=$(grep -oPm1 "(?<=<Version>)[^<]+" **/*.csproj 2>/dev/null) || VERSION=$(date +'%Y.%m.%d.%H%M')
+          echo "VERSION=${VERSION}" >> $GITHUB_OUTPUT
+          echo "Version: ${VERSION}"
+
       - name: Publish (.NET, framework-dependent)
         run: |
-          dotnet restore
-          dotnet publish --configuration Release -r ${{ matrix.rid }} -o out/${{ matrix.rid }}
+          # 还原依赖
+          if ! dotnet restore; then
+            echo "::error::Restore failed"
+            exit 1
+          fi
 
+          # 发布
+          if ! dotnet publish --configuration Release -r ${{ matrix.rid }} -o out/${{ matrix.rid }}; then
+            echo "::error::Publish failed"
+            exit 1
+          fi
 
+          # 创建压缩包
           cd out/${{ matrix.rid }}
-          zip -r ../${{ matrix.artifact_name }} .
+          if ! zip -r ../${{ matrix.artifact_name }} .; then
+            echo "::error::Zip failed"
+            exit 1
+          fi
           cd ../..
 
       - name: Upload artifact
-        uses: actions/upload-artifact@v4  
+        uses: actions/upload-artifact@v4
         with:
           name: ${{ matrix.name }}
           path: out/${{ matrix.artifact_name }}
+          retention-days: 1  # 设置保留期为1天以节省存储空间
 
   release:
     runs-on: ubuntu-latest
     needs: build
     steps:
       - name: Download artifacts
-        uses: actions/download-artifact@v4  
+        uses: actions/download-artifact@v4
         with:
-          path: .
+          path: ./artifacts
+
+      - name: Get current date
+        id: date
+        run: echo "DATE=$(date +'%Y-%m-%d')" >> $GITHUB_OUTPUT
 
       - name: Create Release
-        id: create_release
-        uses: actions/create-release@v1
-        with:
-          tag_name: v1.0.5
-          release_name: "1.0.5 版本"
-          body: "TelegramMonitor 1.0.5 版本说明：\n- 修复 bug"
-          draft: false
-          prerelease: false
+        uses: softprops/action-gh-release@v1
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-
-      - name: Upload linux-64
-        uses: actions/upload-release-asset@v1
         with:
-          upload_url: ${{ steps.create_release.outputs.upload_url }}
-          asset_path: "./linux-64/TelegramMonitor-linux-64.zip"
-          asset_name: "TelegramMonitor-linux-64.zip"
-          asset_content_type: application/zip
-
-      - name: Upload linux-arm64
-        uses: actions/upload-release-asset@v1
-        with:
-          upload_url: ${{ steps.create_release.outputs.upload_url }}
-          asset_path: "./linux-arm64/TelegramMonitor-linux-arm64.zip"
-          asset_name: "TelegramMonitor-linux-arm64.zip"
-          asset_content_type: application/zip
-
-      - name: Upload osx-64
-        uses: actions/upload-release-asset@v1
-        with:
-          upload_url: ${{ steps.create_release.outputs.upload_url }}
-          asset_path: "./osx-64/TelegramMonitor-osx-64.zip"
-          asset_name: "TelegramMonitor-osx-64.zip"
-          asset_content_type: application/zip
-
-      - name: Upload osx-arm64
-        uses: actions/upload-release-asset@v1
-        with:
-          upload_url: ${{ steps.create_release.outputs.upload_url }}
-          asset_path: "./osx-arm64/TelegramMonitor-osx-arm64.zip"
-          asset_name: "TelegramMonitor-osx-arm64.zip"
-          asset_content_type: application/zip
-
-      - name: Upload windows-32
-        uses: actions/upload-release-asset@v1
-        with:
-          upload_url: ${{ steps.create_release.outputs.upload_url }}
-          asset_path: "./windows-32/TelegramMonitor-windows-32.zip"
-          asset_name: "TelegramMonitor-windows-32.zip"
-          asset_content_type: application/zip
-
-      - name: Upload windows-64
-        uses: actions/upload-release-asset@v1
-        with:
-          upload_url: ${{ steps.create_release.outputs.upload_url }}
-          asset_path: "./windows-64/TelegramMonitor-windows-64.zip"
-          asset_name: "TelegramMonitor-windows-64.zip"
-          asset_content_type: application/zip
-
-      - name: Upload windows-arm64
-        uses: actions/upload-release-asset@v1
-        with:
-          upload_url: ${{ steps.create_release.outputs.upload_url }}
-          asset_path: "./windows-arm64/TelegramMonitor-windows-arm64.zip"
-          asset_name: "TelegramMonitor-windows-arm64.zip"
-          asset_content_type: application/zip
+          tag_name: v${{ needs.build.outputs.version || steps.date.outputs.DATE }}
+          name: "Release ${{ needs.build.outputs.version || steps.date.outputs.DATE }}"
+          body: |
+            ## TelegramMonitor 更新说明
+            
+            发布时间：${{ steps.date.outputs.DATE }}
+            
+            ### 更新内容
+            - 自动构建发布
+            - 支持多平台：Windows、Linux、macOS
+            - 支持 ARM64 架构
+            
+            ### 下载说明
+            - Windows 用户请下载对应系统架构的 zip 文件
+              - 64位系统：TelegramMonitor-windows-64.zip
+              - 32位系统：TelegramMonitor-windows-32.zip
+              - ARM64系统：TelegramMonitor-windows-arm64.zip
+            - Linux 用户请下载对应架构的 zip 文件
+              - x64架构：TelegramMonitor-linux-64.zip
+              - ARM64架构：TelegramMonitor-linux-arm64.zip
+            - macOS 用户请下载对应架构的 zip 文件
+              - Intel芯片：TelegramMonitor-osx-64.zip
+              - M系列芯片：TelegramMonitor-osx-arm64.zip
+          
+          files: |
+            ./artifacts/**/*.zip
+          draft: false
+          prerelease: false
+          generate_release_notes: true
