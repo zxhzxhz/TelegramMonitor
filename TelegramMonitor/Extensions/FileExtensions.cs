@@ -71,4 +71,62 @@ public class FileExtensions
 
         File.WriteAllText(filePath, defaultContent);
     }
+
+    // 从指定文件路径加载黑名单关键词列表
+    public static void LoadBlacklistKeywords(string filePath)
+    {
+        LogExtensions.Debug("开始读取黑名单关键词...");
+        try
+        {
+            if (!File.Exists(filePath))
+            {
+                File.WriteAllText(filePath, "# 黑名单关键词，每行一个\n");
+            }
+
+            Constants.BLACKLIST_KEYWORDS = File.ReadAllLines(filePath)
+                .Where(line => !string.IsNullOrWhiteSpace(line) && !line.StartsWith("#"))
+                .Select(line => line.ToLowerInvariant())
+                .ToList();
+
+            LogExtensions.Debug($"读取到{Constants.BLACKLIST_KEYWORDS.Count}个黑名单关键词");
+        }
+        catch (Exception ex)
+        {
+            LogExtensions.Error($"读取黑名单关键词失败: {ex.Message}");
+        }
+    }
+
+    // 从指定文件路径加载黑名单用户列表
+    public static void LoadBlacklistUsers(string filePath)
+    {
+        LogExtensions.Debug("开始读取黑名单用户...");
+        try
+        {
+            if (!File.Exists(filePath))
+            {
+                File.WriteAllText(filePath, "# 黑名单用户，每行一个（可以是userId或userName）userName不带@\n");
+            }
+
+            Constants.BLACKLIST_USERS = File.ReadAllLines(filePath)
+                .Where(line => !string.IsNullOrWhiteSpace(line) && !line.StartsWith("#"))
+                .Select(line => line.Trim())
+                .ToList();
+
+            LogExtensions.Debug($"读取到{Constants.BLACKLIST_USERS.Count}个黑名单用户");
+        }
+        catch (Exception ex)
+        {
+            LogExtensions.Error($"读取黑名单用户失败: {ex.Message}");
+        }
+    }
+
+    // 检查消息是否包含黑名单关键词
+    public static bool ContainsBlacklistKeyword(string message)
+    {
+        if (string.IsNullOrEmpty(message)) return false;
+
+        var messageLower = message.ToLowerInvariant();
+        return Constants.BLACKLIST_KEYWORDS.Any(keyword =>
+            messageLower.Contains(keyword, StringComparison.OrdinalIgnoreCase));
+    }
 }

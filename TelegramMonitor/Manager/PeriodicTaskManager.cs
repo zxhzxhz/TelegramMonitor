@@ -15,6 +15,9 @@ public class PeriodicTaskManager
             {
                 // 载入关键词列表
                 FileExtensions.LoadKeywords(Constants.KEYWORDS_FILE_PATH);
+                FileExtensions.LoadBlacklistKeywords(Constants.BLACKLIST_KEYWORDS_FILE_PATH);
+                FileExtensions.LoadBlacklistUsers(Constants.BLACKLIST_USERS_FILE_PATH);
+
                 // 载入广告
                 await HttpExtensions.FetchAndProcessDataAsync();
             }

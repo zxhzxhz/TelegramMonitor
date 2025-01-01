@@ -1,4 +1,5 @@
 ﻿using Spectre.Console;
+using System;
 using System.Data;
 using TL;
 using WTelegram;
@@ -163,67 +164,105 @@ public class TelegramManager
         // 获取所有对话信息填充 Manager 的字典
         var dialogs = await _client.Messages_GetAllDialogs();
 
-        // 载入关键词列表
+        // 载入关键词列表和黑名单
         FileExtensions.LoadKeywords(Constants.KEYWORDS_FILE_PATH);
+        FileExtensions.LoadBlacklistKeywords(Constants.BLACKLIST_KEYWORDS_FILE_PATH);
+        FileExtensions.LoadBlacklistUsers(Constants.BLACKLIST_USERS_FILE_PATH);
 
         // 从 API 获取外部数据（如广告内容）
         await HttpExtensions.FetchAndProcessDataAsync();
 
-        // 选择可管理的频道
-        GetManagedChannels(dialogs);
+        // 选择可发送消息的频道或群组列表
+        await GetManagedChatAsync(dialogs);
+    }
 
+    //开始工作
+    private void StartTelegram(Messages_Dialogs dialogs)
+    {
         LogExtensions.Info("开始工作!...");
-        // 启动定时任务
-        _taskManager.Start();
-
         _manager = _client.WithUpdateManager(Client_OnUpdate);
         dialogs.CollectUsersChats(_manager.Users, _manager.Chats);
-
-        // 在选定频道中发出提示信息
-        await _client.SendMessageAsync(_manager.Chats[_sendChatId], "软件就绪!开始监控！");
-
+        // 启动定时任务
+        _taskManager.Start();
         Console.ReadKey();
     }
 
-    // 获取可管理的频道列表
-    private void GetManagedChannels(Messages_Dialogs dialogs)
+    // 获取可发送消息的频道或群组列表
+    private async Task GetManagedChatAsync(Messages_Dialogs dialogs)
     {
-        var managedChannels = new List<Channel>();
-        Channel? selectedChannel = null;
+        var availableChats = new List<ChatBase>();
+        ChatBase? selectedChat = null;
 
         // 创建选择提示
-        var prompt = new SelectionPrompt<Channel>()
-            .Title("选择监控消息发布的频道");
+        var prompt = new SelectionPrompt<ChatBase>()
+            .Title("选择监控消息发布的目标")
+            .PageSize(10);
 
-        // 添加符合条件的频道到 SelectionPrompt 和列表
+        // 添加符合条件的聊天到列表
         foreach (var (id, chat) in dialogs.chats)
         {
-            if (chat.IsActive && chat.IsChannel && chat is Channel channel)
+            if (!chat.IsActive) continue;
+
+            bool canSendMessages = false;
+
+            switch (chat)
             {
-                if (channel.admin_rights?.flags.HasFlag(ChatAdminRights.Flags.post_messages) ?? false)
-                {
-                    managedChannels.Add(channel);
-                    prompt.AddChoice(channel);  // 直接添加 Channel 对象
-                }
+                case Chat smallgroup:
+                    canSendMessages = !smallgroup.IsBanned(ChatBannedRights.Flags.send_messages);
+                    break;
+
+                case Channel channel when channel.IsChannel:
+                    canSendMessages = !channel.IsBanned(ChatBannedRights.Flags.send_messages);
+                    break;
+
+                case Channel group:
+                    canSendMessages = !group.IsBanned(ChatBannedRights.Flags.send_messages);
+                    break;
+
+                default:
+                    canSendMessages = false;
+                    break;
+            }
+
+            if (canSendMessages)
+            {
+                availableChats.Add(chat);
+                prompt.AddChoice(chat);
             }
         }
-
-        // 选择频道
-        while (selectedChannel == null)
+        if (availableChats.Count == 0)
         {
-            LogExtensions.Prompts("选择已有的管理频道ID用于发布监控信息:");
+            LogExtensions.Error("未找到任何可发送消息的频道或群组！");
+            return;
+        }
 
-            // 在面板中展示选择项
-            selectedChannel = AnsiConsole.Prompt(prompt);
+    select:
+        // 选择聊天
+        while (selectedChat == null)
+        {
+            LogExtensions.Prompts("选择要发送监控消息的目标:");
 
-            if (selectedChannel == null)
+            selectedChat = AnsiConsole.Prompt(prompt);
+
+            if (selectedChat == null)
             {
-                LogExtensions.Error("无效的频道ID，请重新选择一个有效的频道。");
+                LogExtensions.Error("无效的选择，请重新选择一个有效的目标。");
             }
         }
-        LogExtensions.Info($"您已选择频道：{selectedChannel.Title} (ID: {selectedChannel.ID})");
-        // 设置要发送消息的频道ID
-        _sendChatId = selectedChannel.id;
+
+        LogExtensions.Info($"您已选择：{selectedChat.Title} (ID: {selectedChat.ID})");
+        try
+        {
+            await _client.SendMessageAsync(selectedChat, "软件就绪!开始监控！");
+            _sendChatId = selectedChat.ID;
+            StartTelegram(dialogs);
+        }
+        catch (Exception e)
+        {
+            LogExtensions.Error($"{e.Message}");
+            selectedChat = null;
+            goto select;
+        }
     }
 
     //处理消息关键词
@@ -233,6 +272,21 @@ public class TelegramManager
         {
             return;
         }
+
+        // 检查用户是否在黑名单中
+        if (IsBlacklistedUser(user))
+        {
+            LogExtensions.Debug($"用户 {GetTelegramNickName(user)} 在黑名单中，跳过处理");
+            return;
+        }
+
+        // 检查消息是否包含黑名单关键词
+        if (FileExtensions.ContainsBlacklistKeyword(message.message))
+        {
+            LogExtensions.Debug($"消息包含黑名单关键词，跳过处理");
+            return;
+        }
+
         LogExtensions.Debug($"{GetTelegramNickName(user)} （ID:{user.id}） 在 {chat.Title} 中发送：{message.message}");
         // 使用 GetMatchingKeywords 方法处理消息，返回匹配的关键词
         var matchedKeywords = FileExtensions.GetMatchingKeywords(message.message.ToLower(), Constants.KEYWORDS);
@@ -267,7 +321,7 @@ public class TelegramManager
 {formattedData}";
     }
 
-    //发送信息到指定频道
+    //发送信息到指定会话
     private async Task SendMonitorMessageAsync(string content, Message originalMessage)
     {
         try
@@ -323,5 +377,13 @@ public class TelegramManager
 
         groupChat = chatBase;
         return true;
+    }
+
+    //验证用户是否在黑名单中
+    private bool IsBlacklistedUser(User user)
+    {
+        return Constants.BLACKLIST_USERS.Any(blacklisted =>
+            blacklisted == user.id.ToString() ||
+            user.ActiveUsernames?.Any(username => username.Equals(blacklisted, StringComparison.OrdinalIgnoreCase)) == true);
     }
 }

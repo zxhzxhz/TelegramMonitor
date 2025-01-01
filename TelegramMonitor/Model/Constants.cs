@@ -15,6 +15,10 @@ public static class Constants
 
     public const string KEYWORDS_FILE_PATH = "keywords.txt";
 
+    public static string BLACKLIST_KEYWORDS_FILE_PATH = "blacklist_keywords.txt";
+
+    public static string BLACKLIST_USERS_FILE_PATH = "blacklist_users.txt";
+
     // API地址
     public const string MONITOR_API_ENDPOINT = "https://riniba.net/api/system/telegramMonitor";
 
@@ -23,6 +27,13 @@ public static class Constants
 
     //关键词列表
     public static List<string> KEYWORDS = [];
+
+    //黑名单关键词列表
+    public static List<string> BLACKLIST_KEYWORDS = new();
+
+    //黑名单用户列表
+    public static List<string> BLACKLIST_USERS = new();
+
 
     //广告列表
     public static List<string> DATA = [];
