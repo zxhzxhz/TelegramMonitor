@@ -11,7 +11,7 @@ on:
 
 permissions:
   contents: write
-  actions: write   # 替换 workflows 为 actions
+  actions: write
 
 jobs:
   build:
@@ -23,24 +23,31 @@ jobs:
           - name: "linux-64"
             rid: "linux-x64"
             artifact_name: "TelegramMonitor-linux-64.zip"
+            ready_to_run: false
           - name: "linux-arm64"
             rid: "linux-arm64"
             artifact_name: "TelegramMonitor-linux-arm64.zip"
+            ready_to_run: false
           - name: "osx-64"
             rid: "osx-x64"
             artifact_name: "TelegramMonitor-osx-64.zip"
+            ready_to_run: false
           - name: "osx-arm64"
             rid: "osx-arm64"
             artifact_name: "TelegramMonitor-osx-arm64.zip"
+            ready_to_run: false
           - name: "windows-32"
             rid: "win-x86"
             artifact_name: "TelegramMonitor-windows-32.zip"
+            ready_to_run: true
           - name: "windows-64"
             rid: "win-x64"
             artifact_name: "TelegramMonitor-windows-64.zip"
+            ready_to_run: true
           - name: "windows-arm64"
             rid: "win-arm64"
             artifact_name: "TelegramMonitor-windows-arm64.zip"
+            ready_to_run: true
 
     steps:
       - name: Checkout repository
@@ -76,7 +83,12 @@ jobs:
             exit 1
           fi
 
-          if ! dotnet publish --configuration Release -r ${{ matrix.rid }} -o out/${{ matrix.rid }}; then
+          PUBLISH_ARGS="--configuration Release -r ${{ matrix.rid }} -o out/${{ matrix.rid }} /p:PublishSingleFile=true"
+          if [ "${{ matrix.ready_to_run }}" = "true" ]; then
+            PUBLISH_ARGS="$PUBLISH_ARGS /p:PublishReadyToRun=true"
+          fi
+
+          if ! dotnet publish $PUBLISH_ARGS; then
             echo "::error::Publish failed"
             exit 1
           fi
@@ -99,31 +111,48 @@ jobs:
     runs-on: ubuntu-latest
     needs: build
     steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 1  
+
       - name: Download artifacts
         uses: actions/download-artifact@v4
         with:
           path: ./artifacts
 
-      - name: Get current date
-        id: date
-        run: echo "DATE=$(date +'%Y-%m-%d')" >> $GITHUB_OUTPUT
+      - name: Get current date and time
+        id: datetime
+        run: |
+          echo "DATETIME=$(TZ='Asia/Shanghai' date +'%Y年%m月%d日 %H:%M:%S')" >> $GITHUB_OUTPUT
+          echo "VERSION=$(date +'%Y.%m.%d.%H%M')" >> $GITHUB_OUTPUT
+
+      - name: Get Latest Commit
+        id: commit
+        run: |
+          COMMIT=$(git log -1 --pretty=format:"%s")
+          echo "MESSAGE=$COMMIT" >> $GITHUB_OUTPUT
 
       - name: Create Release
         uses: softprops/action-gh-release@v1
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
-          tag_name: v${{ needs.build.outputs.version || steps.date.outputs.DATE }}
-          name: "Release ${{ needs.build.outputs.version || steps.date.outputs.DATE }}"
+          tag_name: v${{ needs.build.outputs.version || steps.datetime.outputs.VERSION }}
+          name: "Release ${{ needs.build.outputs.version || steps.datetime.outputs.VERSION }}"
           body: |
             ## TelegramMonitor 更新说明
-            
-            发布时间：${{ steps.date.outputs.DATE }}
+
+            发布时间：${{ steps.datetime.outputs.DATETIME }}
+            发布者：${{ github.actor }}
             
             ### 更新内容
-            - 自动构建发布
-            - 支持多平台：Windows、Linux、macOS
-            - 支持 ARM64 架构
+            ${{ steps.commit.outputs.MESSAGE }}
+            
+            ### 支持平台
+            - Windows (x64/x86/ARM64, 已启用 ReadyToRun 优化)
+            - Linux (x64/ARM64)
+            - macOS (Intel/Apple Silicon)
             
             ### 下载说明
             - Windows 用户请下载对应系统架构的 zip 文件
