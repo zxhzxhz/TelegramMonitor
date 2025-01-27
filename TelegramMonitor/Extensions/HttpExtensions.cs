@@ -1,41 +1,56 @@
-﻿using Newtonsoft.Json;
+﻿namespace TelegramMonitor;
 
-namespace TelegramMonitor;
-
-//Http请求工具类
+/// <summary>
+/// 提供 HTTP 请求相关的扩展方法
+/// </summary>
 public static class HttpExtensions
 {
     private static readonly HttpClient _httpClient = new();
 
-    //获取并处理广告数据
+    /// <summary>
+    /// 异步获取并处理广告数据
+    /// </summary>
     public static async Task FetchAndProcessDataAsync()
     {
+        const string OperationName = "广告数据获取";
+
+        void SetEmptyData(string errorMessage)
+        {
+            LogExtensions.Error($"{OperationName}: {errorMessage}");
+            Constants.SystemConfig.Advertisement = [];
+        }
+
         try
         {
-            LogExtensions.Debug("开始获取广告数据...");
-            var response = await _httpClient.GetStringAsync(Constants.MONITOR_API_ENDPOINT);
-            var result = JsonConvert.DeserializeObject<HttpReturn>(response);
+            LogExtensions.Debug($"开始{OperationName}...");
+            var options = new JsonSerializerOptions
+            {
+                PropertyNameCaseInsensitive = true
+            };
+            var response = await _httpClient.GetStringAsync(Constants.SystemConfig.MonitorApi)
+                .ConfigureAwait(false);
+
+            var result = JsonSerializer.Deserialize<HttpReturn>(response, options);
 
             if (result?.Succeeded == true && result.Data != null)
             {
-                LogExtensions.Debug("广告数据获取成功");
-                Constants.DATA = result.Data;
+                LogExtensions.Debug($"{OperationName}成功");
+                Constants.SystemConfig.Advertisement = result.Data;
                 return;
             }
 
-            LogExtensions.Error("广告数据获取失败：返回数据无效");
-        }
-        catch (HttpRequestException ex)
-        {
-            LogExtensions.Error($"网络请求失败: {ex.Message}");
-        }
-        catch (JsonException ex)
-        {
-            LogExtensions.Error($"JSON解析失败: {ex.Message}");
+            SetEmptyData("返回数据无效");
         }
         catch (Exception ex)
         {
-            LogExtensions.Error($"意外错误: {ex.Message}\n{ex.StackTrace}");
+            var errorType = ex switch
+            {
+                HttpRequestException => "网络请求失败",
+                JsonException => "JSON解析失败",
+                _ => "意外错误"
+            };
+
+            SetEmptyData($"{errorType}: {ex.Message}");
         }
     }
 }

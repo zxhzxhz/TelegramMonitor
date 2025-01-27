@@ -31,51 +31,101 @@
 9. 如果需要停止软件请在那个黑框框里面输入stop 然后按Enter键就可以退出软件了 当然最简单的是直接右上角点X关闭
 
 ## 关键词设置
-- 关键词文件为 `keyword.txt`，软件开始工作后会自动在同级目录创建该文件
-
+- 关键词文件为 `keyword.yaml`，软件开始工作后会自动在同级目录创建该文件 无需自己创建 
+- 请系统自行创建后在进行修改添加
 - 每次修改关键词文件无需重启软件即可生效。
 
-- 每行一个关键词。
+```yaml
+# 关键词监控配置文件
+# -----------------------------
 
-- 关键词配置说明
-  1. 每行一个关键词规则
-  2. 使用?分隔多个关键词，表示AND关系
-  3. 不区分大小写
-  4. 支持模糊匹配
+# 配置文件说明
+# KeywordContent:   关键词内容，默认为空字符串
+#                  可以是普通文本、正则表达式、用户名或用户ID
+#
+# KeywordType:      关键词匹配类型，默认为 Contains
+#                  - Contains:  包含匹配，检查消息中是否包含关键词
+#                  - Regex:     正则表达式匹配，使用正则表达式进行匹配
+#                  - Fuzzy:     模糊匹配，使用 ? 分隔多个关键词，所有词都匹配才算匹配
+#                  - FullWord:  全字匹配，消息需要完全等于关键词
+#                  - User:      用户匹配，可使用用户名或用户ID进行匹配
+#
+# KeywordAction:    匹配后的动作，默认为 Monitor
+#                  - Monitor:   监控消息，匹配时进行记录和通知 如果是用户 则该用户的所有消息会被记录
+#                  - Exclude:   排除匹配的内容，用于过滤不需要的内容 如果是用户 则该用户的所有消息不会被记录
+#
+# 文本样式选项:      以下选项默认都为 false
+#   IsCaseSensitive:   是否区分大小写
+#   IsBold:            是否使用粗体
+#   IsItalic:          是否使用斜体
+#   IsUnderline:       是否添加下划线
+#   IsStrikeThrough:   是否添加删除线
+#   IsQuote:           是否作为引用显示
+#   IsMonospace:       是否使用等宽字体
+#   IsSpoiler:         是否作为剧透内容处理
 
-- 关键词匹配方式：
-  
-  - 全字匹配举例：“**服务器**”可匹配“有人要**服务器**吗？”  
-  - 模糊匹配举例：“**我**?**吃**”可匹配“**我**今天**吃**了一顿大餐”或“**我**昨天**吃**了一顿小龙虾”。
-  
-- 示例关键词说明
-  
-  关键词1
-  ​	关键词2?关键词3
-  ​	关键词4?关键词5
-  
-  
-  
-  第一行的**关键词1** 会匹配所有含有**关键词1**的消息
-  
-  第二行的**关键词2?关键词3** 会匹配所以含有**关键词2* ** *并且含有*  **关键词3**的消息
-  
-  第三行的**关键词4?关键词5** 会匹配所以含有**关键词4* ** *并且含有*  **关键词5**的消息
-  
-  
-  
-- 黑名单关键词说明
-  
-  - 文件为 `blacklist_keywords.txt`，软件开始工作后会自动在同级目录创建该文件
-  -  一行一个 比如黑名单关键词是**刷单** 那么所以包含**刷单**的消息都不会被监控
-  
-- 黑名单用户说明
+# ===== 示例配置 =====
 
-  - 文件为 `blacklist_users.txt`，软件开始工作后会自动在同级目录创建该文件
-  -  可以是用户id也可以是用户名
-  - 比如用户名是**@riniba** 那你就添加**riniba**(不要带@) 那么该用户所有的消息都不会被监控
+- keywordContent: '你好世界'            # 示例1: 包含匹配关键词
+  keywordType: Contains                # 包含匹配
+  keywordAction: Monitor               # 监控消息
+  isCaseSensitive: false               # 不区分大小写
+  isBold: false                        # 不使用粗体
+  isItalic: false                      # 不使用斜体
+  isUnderline: false                   # 不添加下划线
+  isStrikeThrough: false               # 不添加删除线
+  isQuote: false                       # 不作为引用显示
+  isMonospace: false                   # 不使用等宽字体
+  isSpoiler: false                     # 不作为剧透内容处理
 
-  
+- keywordContent: '\b1[3-9]\d{9}\b'    # 示例2: 正则表达式匹配手机号
+  keywordType: Regex                   # 正则包含匹配
+  keywordAction: Monitor               # 监控消息
+  isCaseSensitive: true                # 区分大小写
+  isBold: true                         # 使用粗体
+  isItalic: false                      # 不使用斜体
+  isUnderline: false                   # 不添加下划线
+  isStrikeThrough: false               # 不添加删除线
+  isQuote: false                       # 不作为引用显示
+  isMonospace: true                    # 使用等宽字体
+  isSpoiler: false                     # 不作为剧透内容处理
+
+- keywordContent: '早上?好?问候'        # 示例3: 模糊匹配关键词
+  keywordType: Fuzzy                   # 模糊匹配
+  keywordAction: Monitor               # 监控消息
+  isCaseSensitive: false               # 不区分大小写
+  isBold: false                        # 不使用粗体
+  isItalic: true                       # 使用斜体
+  isUnderline: true                    # 添加下划线
+  isStrikeThrough: false               # 不添加删除线
+  isQuote: true                        # 作为引用显示
+  isMonospace: false                   # 不使用等宽字体
+  isSpoiler: false                     # 不作为剧透内容处理
+
+- keywordContent: 'riniba'             # 示例4: 用户监控
+  keywordType: User                    # 用户匹配
+  keywordAction: Monitor               # 监控消息
+  isCaseSensitive: false               # 不区分大小写
+  isBold: false                        # 不使用粗体
+  isItalic: true                       # 使用斜体
+  isUnderline: false                   # 不添加下划线
+  isStrikeThrough: false               # 不添加删除线
+  isQuote: false                       # 不作为引用显示
+  isMonospace: false                   # 不使用等宽字体
+  isSpoiler: false                     # 不作为剧透内容处理
+
+- keywordContent: '广告'               # 示例5: 内容排除
+  keywordType: Contains                # 包含匹配
+  keywordAction: Exclude               # 排除匹配
+  isCaseSensitive: false               # 不区分大小写
+  isBold: false                        # 不使用粗体
+  isItalic: false                      # 不使用斜体
+  isUnderline: false                   # 不添加下划线
+  isStrikeThrough: true                # 添加删除线
+  isQuote: false                       # 不作为引用显示
+  isMonospace: false                   # 不使用等宽字体
+  isSpoiler: false                     # 不作为剧透内容处理
+```
 
 > **重要提示：**  
 > 只会监控群组的消息。请保持软件运行，以持续监听。

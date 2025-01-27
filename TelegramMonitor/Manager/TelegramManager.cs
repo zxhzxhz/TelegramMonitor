@@ -1,12 +1,8 @@
-﻿using Spectre.Console;
-using System;
-using System.Data;
-using TL;
-using WTelegram;
+﻿namespace TelegramMonitor;
 
-namespace TelegramMonitor;
-
-// Telegram客户端交互类
+/// <summary>
+/// Telegram 客户端交互类，用于登录、获取对话并处理消息更新等功能。
+/// </summary>
 public class TelegramManager
 {
     private readonly Client _client;
@@ -15,19 +11,57 @@ public class TelegramManager
     private UpdateManager? _manager;
     private User? _myUser;
 
+    /// <summary>
+    /// 初始化 <see cref="TelegramManager"/> 实例，并绑定指定的 <see cref="Client"/> 对象。
+    /// </summary>
+    /// <param name="client">Telegram 客户端对象，用于与 Telegram API 通信。</param>
     public TelegramManager(Client client)
     {
         _client = client;
         _taskManager = new PeriodicTaskManager();
     }
 
-    private ChatBase? ChatBase(long id) => _manager?.Chats.GetValueOrDefault(id);
+    #region 私有辅助方法
 
-    private User? User(long id) => _manager?.Users.GetValueOrDefault(id);
+    /// <summary>
+    /// 根据聊天编号获取 <see cref="ChatBase"/> 对象。
+    /// </summary>
+    /// <param name="id">聊天编号。</param>
+    /// <returns>返回对应的 <see cref="ChatBase"/>，若不存在则返回 null。</returns>
+    private ChatBase? ChatBase(long id)
+    {
+        return _manager?.Chats.GetValueOrDefault(id);
+    }
 
-    private IPeerInfo? Peer(Peer peer) => _manager?.UserOrChat(peer);
+    /// <summary>
+    /// 根据用户编号获取 <see cref="User"/> 对象。
+    /// </summary>
+    /// <param name="id">用户编号。</param>
+    /// <returns>返回对应的 <see cref="User"/>，若不存在则返回 null。</returns>
+    private User? User(long id)
+    {
+        return _manager?.Users.GetValueOrDefault(id);
+    }
 
-    // 处理Telegram的Update事件
+    /// <summary>
+    /// 将 <see cref="Peer"/> 对象转换为 <see cref="IPeerInfo"/> 接口实例。
+    /// </summary>
+    /// <param name="peer">需要转换的 Peer。</param>
+    /// <returns>返回对应的 <see cref="IPeerInfo"/>，若无法获取则返回 null。</returns>
+    private IPeerInfo? Peer(Peer peer)
+    {
+        return _manager?.UserOrChat(peer);
+    }
+
+    #endregion 私有辅助方法
+
+    #region 更新处理
+
+    /// <summary>
+    /// Telegram 客户端 Update 事件回调。
+    /// </summary>
+    /// <param name="update">接收的更新对象。</param>
+    /// <returns>表示异步执行结果的 <see cref="Task"/>。</returns>
     private async Task Client_OnUpdate(Update update)
     {
         try
@@ -40,7 +74,11 @@ public class TelegramManager
         }
     }
 
-    // 处理更新事件
+    /// <summary>
+    /// 处理特定的 Telegram 更新。
+    /// </summary>
+    /// <param name="update">Telegram 更新对象。</param>
+    /// <returns>表示异步执行结果的 <see cref="Task"/>。</returns>
     private async Task ProcessUpdateAsync(Update update)
     {
         switch (update)
@@ -50,7 +88,7 @@ public class TelegramManager
                 break;
 
             case UpdateEditMessage uem:
-                LogExtensions.Debug($"{User(uem.message.From)} edited a message  in {ChatBase(uem.message.Peer)}");
+                LogExtensions.Debug($"{User(uem.message.From)} edited a message in {ChatBase(uem.message.Peer)}");
                 break;
 
             case UpdateDeleteChannelMessages udcm:
@@ -95,13 +133,16 @@ public class TelegramManager
         }
     }
 
-    // 处理接收到的消息
+    /// <summary>
+    /// 处理接收到的消息（可能是普通消息或服务消息）。
+    /// </summary>
+    /// <param name="messageBase">消息基类对象。</param>
+    /// <param name="edit">是否为编辑后的消息。</param>
+    /// <returns>表示异步执行结果的 <see cref="Task"/>。</returns>
     private async Task HandleMessageAsync(MessageBase messageBase, bool edit = false)
     {
-        if (edit)
-        {
-            return;
-        }
+        if (edit) return;
+
         try
         {
             switch (messageBase)
@@ -121,16 +162,28 @@ public class TelegramManager
         }
     }
 
-    // 处理普通消息
+    /// <summary>
+    /// 处理纯文本消息。
+    /// </summary>
+    /// <param name="m">消息对象。</param>
+    /// <returns>表示异步执行结果的 <see cref="Task"/>。</returns>
     private async Task HandleTLMessageAsync(Message m)
     {
-        // 尝试获取有效的用户和聊天对象
         if (!TryGetValidGroupChatAndUser(m, out var groupChat, out var user))
             return;
+
         await HandleKeywordMatchesAsync(groupChat!, user!, m);
     }
 
-    // 执行登录流程
+    #endregion 更新处理
+
+    #region 公共方法
+
+    /// <summary>
+    /// 执行登录流程，等待用户输入验证码、二级密码等信息。
+    /// </summary>
+    /// <param name="loginInfo">初始登录信息或验证码。</param>
+    /// <returns>表示异步登录过程的 <see cref="Task"/>。</returns>
     public async Task DoLoginAsync(string loginInfo)
     {
         while (_client.User == null)
@@ -161,68 +214,57 @@ public class TelegramManager
         _myUser = _client.User;
         LogExtensions.Info($"监控人员: {_myUser} (id {_myUser.id}) 启动成功!");
 
-        // 获取所有对话信息填充 Manager 的字典
         var dialogs = await _client.Messages_GetAllDialogs();
 
-        // 载入关键词列表和黑名单
-        FileExtensions.LoadKeywords(Constants.KEYWORDS_FILE_PATH);
-        FileExtensions.LoadBlacklistKeywords(Constants.BLACKLIST_KEYWORDS_FILE_PATH);
-        FileExtensions.LoadBlacklistUsers(Constants.BLACKLIST_USERS_FILE_PATH);
-
-        // 从 API 获取外部数据（如广告内容）
+        FileExtensions.LoadKeywordConfigs(Constants.FilePaths.KeywordsFile);
         await HttpExtensions.FetchAndProcessDataAsync();
 
-        // 选择可发送消息的频道或群组列表
         await GetManagedChatAsync(dialogs);
     }
 
-    //开始工作
+    #endregion 公共方法
+
+    #region 私有业务逻辑
+
+    /// <summary>
+    /// 启动接收并处理 Telegram 更新的核心逻辑。
+    /// </summary>
+    /// <param name="dialogs">包含用户和聊天信息的对话列表。</param>
     private void StartTelegram(Messages_Dialogs dialogs)
     {
         LogExtensions.Info("开始工作!...");
         _manager = _client.WithUpdateManager(Client_OnUpdate);
         dialogs.CollectUsersChats(_manager.Users, _manager.Chats);
-        // 启动定时任务
+
         _taskManager.Start();
         Console.ReadKey();
     }
 
-    // 获取可发送消息的频道或群组列表
+    /// <summary>
+    /// 让用户选择一个可发送消息的聊天频道或群组，并进行后续监控处理。
+    /// </summary>
+    /// <param name="dialogs">包含所有聊天信息的对话列表。</param>
+    /// <returns>表示异步执行结果的 <see cref="Task"/>。</returns>
     private async Task GetManagedChatAsync(Messages_Dialogs dialogs)
     {
         var availableChats = new List<ChatBase>();
         ChatBase? selectedChat = null;
 
-        // 创建选择提示
         var prompt = new SelectionPrompt<ChatBase>()
             .Title("选择监控消息发布的目标")
             .PageSize(10);
 
-        // 添加符合条件的聊天到列表
         foreach (var (id, chat) in dialogs.chats)
         {
             if (!chat.IsActive) continue;
 
-            bool canSendMessages = false;
-
-            switch (chat)
+            bool canSendMessages = chat switch
             {
-                case Chat smallgroup:
-                    canSendMessages = !smallgroup.IsBanned(ChatBannedRights.Flags.send_messages);
-                    break;
-
-                case Channel channel when channel.IsChannel:
-                    canSendMessages = !channel.IsBanned(ChatBannedRights.Flags.send_messages);
-                    break;
-
-                case Channel group:
-                    canSendMessages = !group.IsBanned(ChatBannedRights.Flags.send_messages);
-                    break;
-
-                default:
-                    canSendMessages = false;
-                    break;
-            }
+                Chat smallgroup => !smallgroup.IsBanned(ChatBannedRights.Flags.send_messages),
+                Channel channel when channel.IsChannel => !channel.IsBanned(ChatBannedRights.Flags.send_messages),
+                Channel group => !group.IsBanned(ChatBannedRights.Flags.send_messages),
+                _ => false
+            };
 
             if (canSendMessages)
             {
@@ -230,98 +272,130 @@ public class TelegramManager
                 prompt.AddChoice(chat);
             }
         }
+
         if (availableChats.Count == 0)
         {
             LogExtensions.Error("未找到任何可发送消息的频道或群组！");
             return;
         }
 
-    select:
-        // 选择聊天
         while (selectedChat == null)
         {
             LogExtensions.Prompts("选择要发送监控消息的目标:");
-
             selectedChat = AnsiConsole.Prompt(prompt);
 
             if (selectedChat == null)
             {
                 LogExtensions.Error("无效的选择，请重新选择一个有效的目标。");
+                continue;
             }
-        }
 
-        LogExtensions.Info($"您已选择：{selectedChat.Title} (ID: {selectedChat.ID})");
-        try
-        {
-            await _client.SendMessageAsync(selectedChat, "软件就绪!开始监控！");
-            _sendChatId = selectedChat.ID;
-            StartTelegram(dialogs);
-        }
-        catch (Exception e)
-        {
-            LogExtensions.Error($"{e.Message}");
-            selectedChat = null;
-            goto select;
+            LogExtensions.Info($"您已选择：{selectedChat.Title} (ID: {selectedChat.ID})");
+            try
+            {
+                await _client.SendMessageAsync(selectedChat, "软件就绪!开始监控！");
+                _sendChatId = selectedChat.ID;
+                StartTelegram(dialogs);
+            }
+            catch (Exception e)
+            {
+                LogExtensions.Error($"{e.Message}");
+                selectedChat = null;
+            }
         }
     }
 
-    //处理消息关键词
+    /// <summary>
+    /// 根据用户和消息内容匹配关键词配置，并根据匹配结果执行对应的处理逻辑（排除或监控）。
+    /// </summary>
+    /// <param name="chat">当前聊天对象。</param>
+    /// <param name="user">消息发送者。</param>
+    /// <param name="message">消息对象。</param>
+    /// <returns>异步执行结果的 <see cref="Task"/>。</returns>
     private async Task HandleKeywordMatchesAsync(ChatBase chat, User user, Message message)
     {
         if (string.IsNullOrWhiteSpace(message.message))
+            return;
+
+        var matchedUserKeywords = FileExtensions.GetMatchingUserConfigs(user);
+
+        if (matchedUserKeywords.Any(x => x.KeywordAction == KeywordAction.Exclude))
         {
+            LogExtensions.Debug($"{TelegramExtensions.GetTelegramNickName(user)}（ID:{user.id}） 此用户在排除列表内,跳过");
             return;
         }
 
-        // 检查用户是否在黑名单中
-        if (IsBlacklistedUser(user))
+        if (matchedUserKeywords.Any(x => x.KeywordAction == KeywordAction.Monitor))
         {
-            LogExtensions.Debug($"用户 {GetTelegramNickName(user)} 在黑名单中，跳过处理");
+            LogExtensions.Debug($"{TelegramExtensions.GetTelegramNickName(user)}（ID:{user.id}） 此用户在无论发送什么都会监控");
+            var userMonitorContent = BuildMessageContent(chat, user, message, matchedUserKeywords);
+            await SendMonitorMessageAsync(userMonitorContent, message);
             return;
         }
 
-        // 检查消息是否包含黑名单关键词
-        if (FileExtensions.ContainsBlacklistKeyword(message.message))
+        LogExtensions.Debug($"{TelegramExtensions.GetTelegramNickName(user)}（ID:{user.id}） 在 {chat.Title} 中发送：{message.message}");
+
+        var matchedKeywords = FileExtensions.GetMatchingKeywords(message.message);
+
+        if (matchedKeywords.Any(x => x.KeywordAction == KeywordAction.Exclude))
         {
-            LogExtensions.Debug($"消息包含黑名单关键词，跳过处理");
+            LogExtensions.Debug("消息包含排除的关键词，跳过处理");
             return;
         }
 
-        LogExtensions.Debug($"{GetTelegramNickName(user)} （ID:{user.id}） 在 {chat.Title} 中发送：{message.message}");
-        // 使用 GetMatchingKeywords 方法处理消息，返回匹配的关键词
-        var matchedKeywords = FileExtensions.GetMatchingKeywords(message.message.ToLower(), Constants.KEYWORDS);
+        matchedKeywords = matchedKeywords
+            .Where(x => x.KeywordAction == KeywordAction.Monitor)
+            .ToList();
+
         if (matchedKeywords.Count == 0)
         {
-            LogExtensions.Debug($"无匹配关键词，跳过");
-            return;  // 如果没有匹配的关键词，直接返回
+            LogExtensions.Debug("无匹配关键词，跳过");
+            return;
         }
 
-        // 构建消息内容并发送
         var messageContent = BuildMessageContent(chat, user, message, matchedKeywords);
         await SendMonitorMessageAsync(messageContent, message);
     }
 
-    //构建发送的消息内容
-    private string BuildMessageContent(ChatBase chat, User user, Message message, List<string> keywords)
+    /// <summary>
+    /// 构建要发送到监控频道的消息内容字符串，并将整条消息应用合并样式。
+    /// </summary>
+    /// <param name="chat">聊天对象。</param>
+    /// <param name="user">消息发送者。</param>
+    /// <param name="message">原始消息。</param>
+    /// <param name="keywords">匹配到的关键词配置列表。</param>
+    /// <returns>拼接生成的 HTML 字符串。</returns>
+    private string BuildMessageContent(ChatBase chat, User user, Message message, List<KeywordConfig> keywords)
     {
         var text = _client.EntitiesToHtml(message.message, message.entities);
-        var formattedData = string.Join("\n", Constants.DATA.Select(line => $"<b>{line}</b>"));
-        var keywordDisplay = string.Join(", ", keywords.Select(k => $"#{k.Replace("?", "")}"));
-        LogExtensions.Warning($"匹配到关键词{keywordDisplay}");
+
+        var mergedStyle = TelegramExtensions.MergeKeywordStyles(keywords);
+
+        text = TelegramExtensions.ApplyStylesToText(text, mergedStyle);
+
+        var formattedData = string.Join("\n", Constants.SystemConfig.Advertisement.Select(line => $"<b>{line}</b>"));
+
+        var keywordPlainList = string.Join(", ", keywords.Select(k => k.KeywordContent));
+        LogExtensions.Warning($"匹配到关键词: {keywordPlainList}");
 
         return $@"
-<b>命中关键词：</b>{keywordDisplay}
+<b>命中关键词：</b>#{keywordPlainList}
 用户ID：<code>{user.id}</code>
-用户：{GetTelegramUserLink(user)}  {GetTelegramUserName(user)}
+用户：{TelegramExtensions.GetTelegramUserLink(user)}  {TelegramExtensions.GetTelegramUserName(user)}
 来源：<code>【{chat.Title}】</code>  {chat.MainUsername?.Insert(0, "@") ?? "无"}
 时间：<code>{message.Date.AddHours(8):yyyy-MM-dd HH:mm:ss}</code>
-内容：<b>{text}</b>
+内容：{text}
 链接：<a href=""https://t.me/{chat.MainUsername ?? $"c/{chat.ID}"}/{message.id}"">【直达】</a>
 --------------------------------
 {formattedData}";
     }
 
-    //发送信息到指定会话
+    /// <summary>
+    /// 向监控频道或群组发送匹配到的消息内容。
+    /// </summary>
+    /// <param name="content">待发送的文本内容（HTML 格式）。</param>
+    /// <param name="originalMessage">原始消息对象，用于携带媒体信息。</param>
+    /// <returns>表示异步发送操作的 <see cref="Task"/>。</returns>
     private async Task SendMonitorMessageAsync(string content, Message originalMessage)
     {
         try
@@ -341,35 +415,24 @@ public class TelegramManager
         }
     }
 
-    // 获取用户名
-    private string GetTelegramUserName(User user) =>
-        string.Join(" ", user.ActiveUsernames?.Select(u => $"@{u}") ?? Array.Empty<string>());
-
-    // 获取用户昵称
-    private string GetTelegramNickName(User user) =>
-        (user.first_name + user.last_name)?.Replace("<", "").Replace(">", "") ?? string.Empty;
-
-    // 获取用户链接
-    private string GetTelegramUserLink(User user)
-    {
-        var nickName = GetTelegramNickName(user);
-        var displayName = string.IsNullOrEmpty(nickName) ? user.id.ToString() : nickName;
-        return $"<a href=\"tg://user?id={user.id}\">{displayName}</a>";
-    }
-
-    // 验证消息来源的有效性
-    private bool TryGetValidGroupChatAndUser(
-        Message message,
-        out ChatBase? groupChat,
-        out User? user)
+    /// <summary>
+    /// 检查是否能在当前消息中识别到有效的群组聊天与用户对象。
+    /// </summary>
+    /// <param name="message">消息对象。</param>
+    /// <param name="groupChat">输出参数，返回匹配到的群组对象。</param>
+    /// <param name="user">输出参数，返回匹配到的用户对象。</param>
+    /// <returns>若识别成功返回 true，否则返回 false。</returns>
+    private bool TryGetValidGroupChatAndUser(Message message, out ChatBase? groupChat, out User? user)
     {
         groupChat = null;
         user = null;
 
-        if (_manager == null || message.from_id == null) return false;
+        if (_manager == null || message.from_id == null)
+            return false;
 
         user = User(message.from_id);
-        if (user == null || user.IsBot) return false;
+        if (user == null || user.IsBot)
+            return false;
 
         var chatBase = ChatBase(message.peer_id);
         if (chatBase == null || !chatBase.IsGroup || string.IsNullOrWhiteSpace(message.message))
@@ -379,11 +442,5 @@ public class TelegramManager
         return true;
     }
 
-    //验证用户是否在黑名单中
-    private bool IsBlacklistedUser(User user)
-    {
-        return Constants.BLACKLIST_USERS.Any(blacklisted =>
-            blacklisted == user.id.ToString() ||
-            user.ActiveUsernames?.Any(username => username.Equals(blacklisted, StringComparison.OrdinalIgnoreCase)) == true);
-    }
+    #endregion 私有业务逻辑
 }

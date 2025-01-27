@@ -1,0 +1,11 @@
+﻿global using Spectre.Console;
+global using TL;
+global using WTelegram;
+global using System.Text;
+global using TelegramMonitor;
+global using System.Text.Json.Serialization;
+global using System.Text.Json;
+global using System.Text.RegularExpressions;
+global using System.Security;
+global using YamlDotNet.Serialization.NamingConventions;
+global using YamlDotNet.Serialization;
