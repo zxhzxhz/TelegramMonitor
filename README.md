@@ -31,9 +31,22 @@
 9. 如果需要停止软件请在那个黑框框里面输入stop 然后按Enter键就可以退出软件了 当然最简单的是直接右上角点X关闭
 
 ## 关键词设置
+
 - 关键词文件为 `keyword.yaml`，软件开始工作后会自动在同级目录创建该文件 无需自己创建 
 - 请系统自行创建后在进行修改添加
 - 每次修改关键词文件无需重启软件即可生效。
+
+> [!NOTE]
+>
+> 批量关键词(单配置)设置在线生成
+>
+> [https://riniba.net/GenerateFromKeywords.html](https://riniba.net/GenerateFromKeywords.html)
+>
+> 批量关键词(多配置)设置在线生成
+>
+> [https://riniba.net//GenerateFromList.html](https://riniba.net//GenerateFromList.html))
+
+
 
 ```yaml
 # 关键词监控配置文件
