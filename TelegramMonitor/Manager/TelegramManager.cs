@@ -252,7 +252,8 @@ public class TelegramManager
 
         var prompt = new SelectionPrompt<ChatBase>()
             .Title("选择监控消息发布的目标")
-            .PageSize(10);
+            .PageSize(10)
+            .UseConverter(chat => Markup.Escape(chat.Title));
 
         foreach (var (id, chat) in dialogs.chats)
         {

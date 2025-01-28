@@ -44,8 +44,11 @@ public static class LogExtensions
     /// <param name="color">日志颜色</param>
     private static void WriteLog(string message, string color)
     {
+
         var timestamp = GetTimestamp();
-        AnsiConsole.MarkupLine($"[{color}][[{timestamp}]]  {message.Replace("[", "[[").Replace("]", "]]")}[/]");
+        var escapedMessage = Markup.Escape(message);
+        AnsiConsole.MarkupLine($"[{color}][[{timestamp}]]  {escapedMessage}[/]");
+
     }
 
     /// <summary>
@@ -54,7 +57,9 @@ public static class LogExtensions
     /// <param name="message">提示消息</param>
     public static void Prompts(string message)
     {
-        var rule = new Rule($"[bold blue]{message.Replace("[", "[[").Replace("]", "]]")}[/]");
+
+        var escapedMessage = Markup.Escape(message);
+        var rule = new Rule($"[bold blue]{escapedMessage}[/]");
         rule.Justification = Justify.Left;
         AnsiConsole.Write(rule);
     }
