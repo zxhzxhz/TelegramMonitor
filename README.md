@@ -44,7 +44,7 @@
 >
 > 批量关键词(多配置)设置在线生成
 >
-> [https://riniba.net//GenerateFromList.html](https://riniba.net//GenerateFromList.html))
+> [https://riniba.net//GenerateFromList.html](https://riniba.net//GenerateFromList.html)
 
 
 
