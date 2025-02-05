@@ -1,4 +1,6 @@
-﻿namespace TelegramMonitor;
+﻿using System.Reflection;
+
+namespace TelegramMonitor;
 
 /// <summary>
 /// 提供 Telegram 用户信息相关的扩展方法
@@ -151,5 +153,19 @@ public static class TelegramExtensions
             }
             await Task.Delay(1000, cancellationToken);
         }
+    }
+
+    /// <summary>
+    /// 获取枚举的 Description 注释
+    /// </summary>
+    public static string GetDescription(this Enum value)
+    {
+        if (value == null) return string.Empty;
+
+        FieldInfo? field = value.GetType().GetField(value.ToString());
+        if (field == null) return value.ToString();
+
+        DescriptionAttribute? attribute = field.GetCustomAttribute<DescriptionAttribute>();
+        return attribute?.Description ?? value.ToString();
     }
 }

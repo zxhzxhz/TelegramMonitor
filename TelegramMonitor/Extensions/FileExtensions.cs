@@ -67,7 +67,13 @@ public class FileExtensions
                     config.KeywordAction = KeywordAction.Monitor;
                 }
 
+                LogExtensions.Debug("----------");
                 LogExtensions.Debug($"成功加载关键词: {config.KeywordContent}");
+                LogExtensions.Debug($"关键词类型: :{config.KeywordType.GetDescription()}");
+                LogExtensions.Debug($"匹配方式:{config.KeywordAction.GetDescription()}");
+                LogExtensions.Debug($"区分大小写:{(config.IsCaseSensitive ? "是" : "否")} ");
+                LogExtensions.Debug("----------");
+                LogExtensions.Debug("");
             }
 
             Constants.Keywords = yamlObject.Where(x => !string.IsNullOrWhiteSpace(x.KeywordContent)).ToList();

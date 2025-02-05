@@ -8,10 +8,12 @@ public enum KeywordAction
     /// <summary>
     /// 排除匹配的内容
     /// </summary>
+    [Description("排除")]
     Exclude,
 
     /// <summary>
     /// 监控匹配的内容
     /// </summary>
+    [Description("监控")]
     Monitor
 }

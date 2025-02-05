@@ -9,3 +9,4 @@ global using System.Text.RegularExpressions;
 global using System.Security;
 global using YamlDotNet.Serialization.NamingConventions;
 global using YamlDotNet.Serialization;
+global using System.ComponentModel;
