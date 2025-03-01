@@ -1,6 +1,4 @@
-﻿using System.Reflection;
-
-namespace TelegramMonitor;
+﻿namespace TelegramMonitor;
 
 /// <summary>
 /// 提供 Telegram 用户信息相关的扩展方法

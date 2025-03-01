@@ -451,4 +451,77 @@ public class FileExtensions
             return message.ToLowerInvariant() == keyword.ToLowerInvariant();
         }
     }
+
+    /// <summary>
+    /// 读取代理配置
+    /// </summary>
+    /// <returns></returns>
+    public static ProxyConfig LoadProxyConfig()
+    {
+        try
+        {
+            if (!File.Exists(Constants.FilePaths.ProxyConfigFile))
+            {
+                LogExtensions.Warning("代理配置文件不存在，使用默认配置");
+                CreateDefaultProxyConfig();
+                return new ProxyConfig();
+            }
+
+            string yamlContent = File.ReadAllText(Constants.FilePaths.ProxyConfigFile);
+            var deserializer = new DeserializerBuilder()
+                .WithNamingConvention(CamelCaseNamingConvention.Instance)
+                .Build();
+
+            var config = deserializer.Deserialize<ProxyConfig>(yamlContent);
+            return config ?? new ProxyConfig();
+        }
+        catch (Exception ex)
+        {
+            LogExtensions.Error($"读取代理配置失败: {ex.Message}");
+            return new ProxyConfig();
+        }
+    }
+
+    /// <summary>
+    /// 创建默认代理配置文件
+    /// </summary>
+    private static void CreateDefaultProxyConfig()
+    {
+        try
+        {
+            var config = new ProxyConfig
+            {
+                Enabled = false,
+                Type = "SOCKS",
+                SocksHost = "127.0.0.1",
+                SocksPort = 1080,
+                SocksUsername = "",
+                SocksPassword = "",
+                MtprotoUrl = "https://t.me/proxy?server=example.com&port=443&secret=yoursecrethere"
+            };
+
+            var serializer = new SerializerBuilder()
+                .WithNamingConvention(CamelCaseNamingConvention.Instance)
+                .Build();
+
+            var yamlContent = @"# Telegram代理配置
+# enabled: 是否启用代理
+# type: 代理类型，可选值为 SOCKS 或 MTProto
+# socksHost: SOCKS代理主机名,代理类型SOCKS才生效
+# socksPort: SOCKS代理端口,代理类型SOCKS才生效
+# socksUsername: SOCKS代理用户名,代理类型SOCKS才生效
+# socksPassword: SOCKS代理密码,代理类型SOCKS才生效
+# mtprotoUrl: MTProto代理链接,代理类型MTProto才生效
+
+# 全局代理设置
+" + serializer.Serialize(config);
+
+            File.WriteAllText(Constants.FilePaths.ProxyConfigFile, yamlContent);
+            LogExtensions.Info($"已创建默认代理配置文件: {Constants.FilePaths.ProxyConfigFile}");
+        }
+        catch (Exception ex)
+        {
+            LogExtensions.Error($"创建默认代理配置文件失败: {ex.Message}");
+        }
+    }
 }

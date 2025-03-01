@@ -10,3 +10,6 @@ global using System.Security;
 global using YamlDotNet.Serialization.NamingConventions;
 global using YamlDotNet.Serialization;
 global using System.ComponentModel;
+global using TelegramMonitor.Models;
+global using xNetStandard;
+global using System.Reflection;

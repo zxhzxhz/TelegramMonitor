@@ -35,6 +35,11 @@ public static class Constants
         /// 关键词配置文件路径
         /// </summary>
         public const string KeywordsFile = "keywords.yaml";
+
+        /// <summary>
+        /// 代理配置文件路径
+        /// </summary>
+        public const string ProxyConfigFile = "proxyConfig.yaml";
     }
 
     /// <summary>
