@@ -1,38 +1,38 @@
 ﻿namespace TelegramMonitor
 {
     /// <summary>
-    /// API返回的标准响应结构
+    /// API 返回的标准响应结构
     /// </summary>
     public class HttpReturn
     {
         /// <summary>
-        /// HTTP状态码
+        /// 状态代码
         /// </summary>
-        public int StatusCode { get; set; }
+        public int Code { get; set; }
 
         /// <summary>
-        /// 业务数据列表
+        /// 类型
         /// </summary>
-        public List<string> Data { get; set; } = new();
+        public string Type { get; set; }
 
         /// <summary>
-        /// 请求是否成功
+        /// 消息内容
         /// </summary>
-        public bool Succeeded { get; set; }
+        public string Message { get; set; }
 
         /// <summary>
-        /// 错误信息
+        /// 返回结果列表
         /// </summary>
-        public string? Errors { get; set; }
+        public List<string> Result { get; set; }
 
         /// <summary>
-        /// 额外数据字段
+        /// 额外信息
         /// </summary>
-        public object? Extras { get; set; }
+        public object Extras { get; set; }
 
         /// <summary>
-        /// UTC时间戳
+        /// 时间戳
         /// </summary>
-        public int Timestamp { get; set; }
+        public string Time { get; set; }
     }
 }

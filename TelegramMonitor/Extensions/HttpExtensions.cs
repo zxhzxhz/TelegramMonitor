@@ -32,10 +32,10 @@ public static class HttpExtensions
 
             var result = JsonSerializer.Deserialize<HttpReturn>(response, options);
 
-            if (result?.Succeeded == true && result.Data != null)
+            if (result.Type.ToLower() == "success" && result.Result != null)
             {
                 LogExtensions.Debug($"{OperationName}成功");
-                Constants.SystemConfig.Advertisement = result.Data;
+                Constants.SystemConfig.Advertisement = result.Result;
                 return;
             }
 

@@ -16,6 +16,10 @@ public static class ProxyExtensions
         if (!config.Enabled)
         {
             LogExtensions.Info("代理未启用，使用直接连接");
+            LogExtensions.Info("如需配置代理请自行配置代理文件:proxyConfig.yaml");
+            LogExtensions.Info("如直接连接请确保你开启了全局代理或者本地可以直连Telegram");
+            LogExtensions.Info("推荐使用v2rayN或者clash 这两个请开启Tun");
+
             return;
         }
 
@@ -46,13 +50,13 @@ public static class ProxyExtensions
         {
             LogExtensions.Info($"正在配置SOCKS5代理: {config.SocksHost}:{config.SocksPort}");
 
-            client.TcpHandler = async (address, port) =>
+            client.TcpHandler = (address, port) =>
             {
                 var proxy = string.IsNullOrEmpty(config.SocksUsername) && string.IsNullOrEmpty(config.SocksPassword)
                     ? new Socks5ProxyClient(config.SocksHost, config.SocksPort)
                     : new Socks5ProxyClient(config.SocksHost, config.SocksPort, config.SocksUsername, config.SocksPassword);
 
-                return proxy.CreateConnection(address, port);
+                return Task.FromResult(proxy.CreateConnection(address, port));
             };
 
             LogExtensions.Info("SOCKS5代理配置完成");

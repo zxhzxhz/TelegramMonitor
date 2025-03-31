@@ -16,7 +16,7 @@ public class PeriodicTaskManager : IDisposable
         _timer = new Timer(ExecutePeriodicTaskAsync);
     }
 
-    private async void ExecutePeriodicTaskAsync(object? state)
+    private async void ExecutePeriodicTaskAsync(object state)
     {
         try
         {

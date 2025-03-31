@@ -5,7 +5,7 @@
     /// </summary>
     public class KeywordConfig
     {
-        private string? keywordContent;
+        private string keywordContent;
         private KeywordType keywordType = KeywordType.Contains; // 默认为Contains
         private KeywordAction keywordAction = KeywordAction.Monitor; // 默认为Monitor
 
@@ -13,8 +13,8 @@
         /// 获取或设置关键词内容(文本/用户名/用户ID)
         /// </summary>
         /// <value>关键词字符串</value>
-        public string? KeywordContent 
-        { 
+        public string KeywordContent
+        {
             get => keywordContent;
             set => keywordContent = value;
         }
@@ -23,7 +23,7 @@
         /// 获取或设置关键词匹配类型
         /// </summary>
         /// <value>关键词匹配类型枚举值</value>
-        public KeywordType KeywordType 
+        public KeywordType KeywordType
         {
             get => keywordType;
             set => keywordType = value;

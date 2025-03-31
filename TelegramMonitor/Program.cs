@@ -18,7 +18,6 @@ try
     // 应用代理配置
     ProxyExtensions.ApplyProxyToClient(client);
 
-    Console.WriteLine(client.TcpHandler.ToString());
     var telegramServer = new TelegramManager(client);
     await telegramServer.DoLoginAsync(phoneNumber);
 

@@ -276,7 +276,7 @@ public class FileExtensions
     /// <param name="user">用户对象。</param>
     /// <param name="keyword">关键字内容。</param>
     /// <returns>true 表示匹配，false 表示不匹配。</returns>
-    private static bool IsUserMatchingKeyword(User user, string? keyword)
+    private static bool IsUserMatchingKeyword(User user, string keyword)
     {
         if (user == null || keyword == null)
         {
@@ -346,7 +346,7 @@ public class FileExtensions
     /// <param name="message">原始消息内容。</param>
     /// <param name="isCaseSensitive">是否区分大小写。</param>
     /// <returns>true 表示匹配，false 表示不匹配。</returns>
-    private static bool IsContainsMatch(string? keyword, string message, bool isCaseSensitive)
+    private static bool IsContainsMatch(string keyword, string message, bool isCaseSensitive)
     {
         if (string.IsNullOrEmpty(keyword) || string.IsNullOrEmpty(message))
         {
@@ -370,7 +370,7 @@ public class FileExtensions
     /// <param name="message">原始消息内容。</param>
     /// <param name="isCaseSensitive">是否区分大小写。</param>
     /// <returns>true 表示匹配，false 表示不匹配。</returns>
-    private static bool IsRegexMatch(string? pattern, string message, bool isCaseSensitive)
+    private static bool IsRegexMatch(string pattern, string message, bool isCaseSensitive)
     {
         if (string.IsNullOrWhiteSpace(pattern) || string.IsNullOrWhiteSpace(message))
         {
@@ -396,7 +396,7 @@ public class FileExtensions
     /// <param name="message">原始消息内容。</param>
     /// <param name="isCaseSensitive">是否区分大小写。</param>
     /// <returns>true 表示匹配，false 表示不匹配。</returns>
-    private static bool IsFuzzyMatch(string? keyword, string message, bool isCaseSensitive)
+    private static bool IsFuzzyMatch(string keyword, string message, bool isCaseSensitive)
     {
         if (string.IsNullOrEmpty(keyword) || string.IsNullOrEmpty(message))
         {
@@ -435,7 +435,7 @@ public class FileExtensions
     /// <param name="message">原始消息内容。</param>
     /// <param name="isCaseSensitive">是否区分大小写。</param>
     /// <returns>true 表示匹配，false 表示不匹配。</returns>
-    private static bool IsFullWordMatch(string? keyword, string message, bool isCaseSensitive)
+    private static bool IsFullWordMatch(string keyword, string message, bool isCaseSensitive)
     {
         if (string.IsNullOrEmpty(keyword) || string.IsNullOrEmpty(message))
         {

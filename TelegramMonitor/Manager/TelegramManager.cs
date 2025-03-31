@@ -8,8 +8,8 @@ public class TelegramManager
     private readonly Client _client;
     private readonly PeriodicTaskManager _taskManager;
     private long _sendChatId;
-    private UpdateManager? _manager;
-    private User? _myUser;
+    private UpdateManager _manager;
+    private User _myUser;
 
     /// <summary>
     /// 初始化 <see cref="TelegramManager"/> 实例，并绑定指定的 <see cref="Client"/> 对象。
@@ -28,7 +28,7 @@ public class TelegramManager
     /// </summary>
     /// <param name="id">聊天编号。</param>
     /// <returns>返回对应的 <see cref="ChatBase"/>，若不存在则返回 null。</returns>
-    private ChatBase? ChatBase(long id)
+    private ChatBase ChatBase(long id)
     {
         return _manager?.Chats.GetValueOrDefault(id);
     }
@@ -38,7 +38,7 @@ public class TelegramManager
     /// </summary>
     /// <param name="id">用户编号。</param>
     /// <returns>返回对应的 <see cref="User"/>，若不存在则返回 null。</returns>
-    private User? User(long id)
+    private User User(long id)
     {
         return _manager?.Users.GetValueOrDefault(id);
     }
@@ -48,7 +48,7 @@ public class TelegramManager
     /// </summary>
     /// <param name="peer">需要转换的 Peer。</param>
     /// <returns>返回对应的 <see cref="IPeerInfo"/>，若无法获取则返回 null。</returns>
-    private IPeerInfo? Peer(Peer peer)
+    private IPeerInfo Peer(Peer peer)
     {
         return _manager?.UserOrChat(peer);
     }
@@ -248,7 +248,7 @@ public class TelegramManager
     private async Task GetManagedChatAsync(Messages_Dialogs dialogs)
     {
         var availableChats = new List<ChatBase>();
-        ChatBase? selectedChat = null;
+        ChatBase selectedChat = null;
 
         var prompt = new SelectionPrompt<ChatBase>()
             .Title("选择监控消息发布的目标")
@@ -283,6 +283,10 @@ public class TelegramManager
         while (selectedChat == null)
         {
             LogExtensions.Prompts("选择要发送监控消息的目标:");
+            LogExtensions.Prompts("下面是监控到消息之后要发送的目标(群组/频道):");
+            LogExtensions.Prompts("下面是监控到消息之后要发送的目标(群组/频道):");
+            LogExtensions.Prompts("↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓:");
+            LogExtensions.Prompts("↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓:");
             selectedChat = AnsiConsole.Prompt(prompt);
 
             if (selectedChat == null)
@@ -423,7 +427,7 @@ public class TelegramManager
     /// <param name="groupChat">输出参数，返回匹配到的群组对象。</param>
     /// <param name="user">输出参数，返回匹配到的用户对象。</param>
     /// <returns>若识别成功返回 true，否则返回 false。</returns>
-    private bool TryGetValidGroupChatAndUser(Message message, out ChatBase? groupChat, out User? user)
+    private bool TryGetValidGroupChatAndUser(Message message, out ChatBase groupChat, out User user)
     {
         groupChat = null;
         user = null;

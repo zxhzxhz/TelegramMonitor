@@ -12,6 +12,29 @@
 - 发布包提供常见的系统版本已经包含运行时。  
 - 如需其他可自行编译
 - 请注意 使用时需具备**全局代理**或能**直连 Telegram**。  
+- 如果使用的`v2rayN`或者`Clash`等代理软件，**请开启Tun**
+- 如需使用代理请在自动生成的`proxyConfig.yaml`里面开启和配置（如下所示）。
+
+```yaml
+# Telegram代理配置
+# enabled: 是否启用代理
+# type: 代理类型，可选值为 SOCKS 或 MTProto
+# socksHost: SOCKS代理主机名,代理类型SOCKS才生效
+# socksPort: SOCKS代理端口,代理类型SOCKS才生效
+# socksUsername: SOCKS代理用户名,代理类型SOCKS才生效
+# socksPassword: SOCKS代理密码,代理类型SOCKS才生效
+# mtprotoUrl: MTProto代理链接,代理类型MTProto才生效
+
+# 全局代理设置
+enabled: false
+type: SOCKS
+socksHost: 127.0.0.1
+socksPort: 1080
+socksUsername: ''
+socksPassword: ''
+mtprotoUrl: https://t.me/proxy?server=example.com&port=443&secret=yoursecrethere
+
+```
 
 ## 账号与频道准备
 - 准备一个 Telegram 账号，该账号需拥有一个或多个可发布消息的频道或者群组。

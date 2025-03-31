@@ -13,7 +13,7 @@ public static class StringExtensions
     /// <summary>
     /// 验证电话号码格式是否有效
     /// </summary>
-    public static bool IsPhoneNumberValid(string? phoneNumber) =>
+    public static bool IsPhoneNumberValid(string phoneNumber) =>
         !string.IsNullOrEmpty(phoneNumber) && PhoneNumberRegex.IsMatch(phoneNumber);
 
     /// <summary>
