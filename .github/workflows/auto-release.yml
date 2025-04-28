@@ -23,31 +23,24 @@ jobs:
           - name: "linux-64"
             rid: "linux-x64"
             artifact_name: "TelegramMonitor-linux-64.zip"
-            ready_to_run: false
           - name: "linux-arm64"
             rid: "linux-arm64"
             artifact_name: "TelegramMonitor-linux-arm64.zip"
-            ready_to_run: false
           - name: "osx-64"
             rid: "osx-x64"
             artifact_name: "TelegramMonitor-osx-64.zip"
-            ready_to_run: false
           - name: "osx-arm64"
             rid: "osx-arm64"
             artifact_name: "TelegramMonitor-osx-arm64.zip"
-            ready_to_run: false
           - name: "windows-32"
             rid: "win-x86"
             artifact_name: "TelegramMonitor-windows-32.zip"
-            ready_to_run: true
           - name: "windows-64"
             rid: "win-x64"
             artifact_name: "TelegramMonitor-windows-64.zip"
-            ready_to_run: true
           - name: "windows-arm64"
             rid: "win-arm64"
             artifact_name: "TelegramMonitor-windows-arm64.zip"
-            ready_to_run: true
 
     steps:
       - name: Checkout repository
@@ -83,11 +76,8 @@ jobs:
             exit 1
           fi
 
+          # 统一只打单文件，不使用 ReadyToRun
           PUBLISH_ARGS="--configuration Release -r ${{ matrix.rid }} -o out/${{ matrix.rid }} /p:PublishSingleFile=true"
-          if [ "${{ matrix.ready_to_run }}" = "true" ]; then
-            PUBLISH_ARGS="$PUBLISH_ARGS /p:PublishReadyToRun=true"
-          fi
-
           if ! dotnet publish $PUBLISH_ARGS; then
             echo "::error::Publish failed"
             exit 1
@@ -150,7 +140,7 @@ jobs:
             ${{ steps.commit.outputs.MESSAGE }}
             
             ### 支持平台
-            - Windows (x64/x86/ARM64, 已启用 ReadyToRun 优化)
+            - Windows (x64/x86/ARM64)
             - Linux (x64/ARM64)
             - macOS (Intel/Apple Silicon)
             
@@ -164,8 +154,7 @@ jobs:
               - ARM64架构：TelegramMonitor-linux-arm64.zip
             - macOS 用户请下载对应架构的 zip 文件
               - Intel芯片：TelegramMonitor-osx-64.zip
-              - M系列芯片：TelegramMonitor-osx-arm64.zip
-          
+              - Apple Silicon：TelegramMonitor-osx-arm64.zip
           files: |
             ./artifacts/**/*.zip
           draft: false

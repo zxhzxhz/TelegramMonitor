@@ -1,169 +1,170 @@
 ﻿namespace TelegramMonitor;
 
-/// <summary>
-/// 提供 Telegram 用户信息相关的扩展方法
-/// </summary>
 public static class TelegramExtensions
 {
-    /// <summary>
-    /// 获取用户的 Telegram 用户名列表
-    /// </summary>
-    /// <param name="user">Telegram 用户对象</param>
-    /// <returns>格式化后的用户名列表，以空格分隔，每个用户名前带@符号</returns>
-    public static string GetTelegramUserName(User user)
+    public static string GetTelegramUserName(this User user) =>
+        user?.ActiveUsernames != null && user.ActiveUsernames.Any()
+            ? string.Join(" ", user.ActiveUsernames.Select(u => $"@{u}"))
+            : string.Empty;
+
+    public static string GetTelegramNickName(this User user)
     {
-        if (user?.ActiveUsernames == null || !user.ActiveUsernames.Any())
-            return string.Empty;
-
-        return string.Join(" ", user.ActiveUsernames.Select(u => $"@{u}"));
-    }
-
-    /// <summary>
-    /// 获取用户的昵称（姓名）
-    /// </summary>
-    /// <param name="user">Telegram 用户对象</param>
-    /// <returns>经过安全转义的用户昵称</returns>
-    public static string GetTelegramNickName(User user)
-    {
-        if (user == null)
-            return string.Empty;
-
+        if (user == null) return string.Empty;
         var fullName = $"{user.first_name}{user.last_name}".Trim();
-        return string.IsNullOrEmpty(fullName)
-            ? string.Empty
-            : SecurityElement.Escape(fullName);
+        return string.IsNullOrEmpty(fullName) ? string.Empty : SecurityElement.Escape(fullName);
     }
 
-    /// <summary>
-    /// 生成用户的 Telegram 链接
-    /// </summary>
-    /// <param name="user">Telegram 用户对象</param>
-    /// <returns>HTML 格式的用户链接</returns>
-    public static string GetTelegramUserLink(User user)
+    public static string GetTelegramUserLink(this User user)
     {
-        if (user == null)
-            return string.Empty;
-
-        var displayName = GetTelegramNickName(user);
-        if (string.IsNullOrEmpty(displayName))
-            displayName = user.id.ToString();
-
-        return $"<a href=\"tg://user?id={user.id}\">{displayName}</a>";
+        if (user == null) return string.Empty;
+        var name = user.GetTelegramNickName();
+        if (string.IsNullOrEmpty(name)) name = user.id.ToString();
+        return $"<a href=\"tg://user?id={user.id}\">{name}</a>";
     }
 
-    /// <summary>
-    /// 合并多个关键词配置的样式选项，使用“或(OR)”逻辑产生最终的样式。
-    /// </summary>
-    /// <param name="keywords">匹配到的多个关键词配置。</param>
-    /// <returns>合并后的样式配置。</returns>
-    public static KeywordConfig MergeKeywordStyles(List<KeywordConfig> keywords)
+    public static bool CanSendMessages(this ChatBase chat) => chat switch
     {
-        // 如果一个都没有匹配，则返回“全部 false”的空样式
-        if (keywords.Count == 0)
-            return new KeywordConfig();
+        Chat small => !small.IsBanned(ChatBannedRights.Flags.send_messages),
+        Channel ch when ch.IsChannel => !ch.IsBanned(ChatBannedRights.Flags.send_messages),
+        Channel group => !group.IsBanned(ChatBannedRights.Flags.send_messages),
+        _ => false
+    };
 
-        // OR 逻辑合并
-        // 只要任意一个关键词需要某项样式，就对整条消息启用该样式
-        return new KeywordConfig
-        {
-            IsBold = keywords.Any(k => k.IsBold),
-            IsItalic = keywords.Any(k => k.IsItalic),
-            IsUnderline = keywords.Any(k => k.IsUnderline),
-            IsStrikeThrough = keywords.Any(k => k.IsStrikeThrough),
-            IsQuote = keywords.Any(k => k.IsQuote),
-            IsMonospace = keywords.Any(k => k.IsMonospace),
-            IsSpoiler = keywords.Any(k => k.IsSpoiler)
-        };
-    }
-
-    /// <summary>
-    /// 根据合并后的样式选项，将整段文本一次性包裹上相应的标签。
-    /// </summary>
-    /// <param name="text">原始文本（可带已有 HTML 标签）。</param>
-    /// <param name="styleConfig">合并后的一组样式开关。</param>
-    /// <returns>添加完样式标签后的文本。</returns>
-    public static string ApplyStylesToText(string text, KeywordConfig styleConfig)
+    public static string GetChatType(this ChatBase chat) => chat switch
     {
-        // 注意 Telegram 对某些标签的支持，请根据实际需要调整顺序或用法
-        var result = text;
+        Chat => "Chat",
+        Channel ch when ch.IsChannel => "Channel",
+        Channel => "Group",
+        _ => "Unknown"
+    };
 
-        // 1. 剧透（某些客户端使用 <tg-spoiler>）
-        if (styleConfig.IsSpoiler)
-        {
-            result = $"<tg-spoiler>{result}</tg-spoiler>";
-        }
-
-        // 2. 等宽
-        if (styleConfig.IsMonospace)
-        {
-            // Telegram中可以用 <code>...</code> 或 <pre>...</pre>
-            result = $"<code>{result}</code>";
-        }
-
-        // 3. 引用
-        if (styleConfig.IsQuote)
-        {
-            // <blockquote> 在 Telegram 未必渲染效果理想，仅作示例
-            result = $"<blockquote>{result}</blockquote>";
-        }
-
-        // 4. 加粗
-        if (styleConfig.IsBold)
-        {
-            result = $"<b>{result}</b>";
-        }
-
-        // 5. 斜体
-        if (styleConfig.IsItalic)
-        {
-            result = $"<i>{result}</i>";
-        }
-
-        // 6. 底线
-        if (styleConfig.IsUnderline)
-        {
-            result = $"<u>{result}</u>";
-        }
-
-        // 7. 删除线
-        if (styleConfig.IsStrikeThrough)
-        {
-            result = $"<s>{result}</s>";
-        }
-
-        return result;
-    }
-
-    /// <summary>
-    /// 异步运行主循环，监听用户输入以停止程序。
-    /// </summary>
-    /// <param name="cancellationToken">用于监测取消请求的令牌。</param>
-    /// <returns>表示异步操作的任务。</returns>
-    public static async Task RunMainLoopAsync(CancellationToken cancellationToken)
+    public static async Task HandleMessageAsync(this MessageBase messageBase, TelegramClientManager clientManager, 
+        SystemCacheServices systemCacheServices, ILogger logger, bool edit = false)
     {
-        while (!cancellationToken.IsCancellationRequested)
+        if (edit) return;
+
+        try
         {
-            var input = Console.ReadLine();
-            if (input?.ToLowerInvariant() == "stop")
+            switch (messageBase)
             {
-                LogExtensions.Warning("正在停止程序...");
-                break;
+                case Message m:
+                    await m.HandleTelegramMessageAsync(clientManager, systemCacheServices, logger);
+                    break;
+
+                case MessageService ms:
+                    var updateManager = clientManager.GetUpdateManager();
+                    logger.LogInformation("{From} in {Peer} [{Action}]",
+                                         updateManager.UserOrChat(ms.from_id),
+                                         updateManager.UserOrChat(ms.peer_id),
+                                         ms.action.GetType().Name[13..]);
+                    break;
             }
-            await Task.Delay(1000, cancellationToken);
+        }
+        catch (Exception ex)
+        {
+            logger.LogError(ex, "处理消息时发生异常");
         }
     }
 
-    /// <summary>
-    /// 获取枚举的 Description 注释
-    /// </summary>
-    public static string GetDescription(this Enum value)
+    public static async Task HandleTelegramMessageAsync(this Message message, TelegramClientManager clientManager,
+        SystemCacheServices systemCacheServices, ILogger logger)
     {
-        if (value == null) return string.Empty;
+        var updateManager = clientManager.GetUpdateManager();
+        var chatBase = updateManager.Chats.GetValueOrDefault(message.peer_id);
+        if (chatBase == null || !chatBase.IsGroup || string.IsNullOrWhiteSpace(message.message))
+            return;
 
-        FieldInfo field = value.GetType().GetField(value.ToString());
-        if (field == null) return value.ToString();
+        var user = updateManager.Users.GetValueOrDefault(message.from_id);
+        if (user == null) return;
 
-        DescriptionAttribute attribute = field.GetCustomAttribute<DescriptionAttribute>();
-        return attribute?.Description ?? value.ToString();
+        logger.LogInformation(
+            "{Nick} (ID:{Uid}) 在 {Chat} 中发送：{Text}",
+            user.GetTelegramNickName(), user.id,
+            chatBase.Title, message.message);
+
+        var ads = systemCacheServices.GetAdvertisement();
+        var keywords = await systemCacheServices.GetKeywordsAsync() ?? new List<KeywordConfig>();
+
+        var matchedUserKeywords = KeywordMatchExtensions.MatchUser(
+                                      user.ID,
+                                      user.ActiveUsernames?.ToList() ?? new List<string>(),
+                                      keywords);
+
+        if (matchedUserKeywords.Any(k => k.KeywordAction == KeywordAction.Exclude))
+        {
+            logger.LogInformation("{Nick} (ID:{Uid}) 在排除列表内，跳过",
+                                   user.GetTelegramNickName(), user.id);
+            return;
+        }
+        var client = await clientManager.GetClientAsync();
+        var messageText = client.EntitiesToHtml(message.message, message.entities);
+
+        if (matchedUserKeywords.Any(k => k.KeywordAction == KeywordAction.Monitor))
+        {
+            var content = message.FormatForMonitor(
+                              chatBase, user, messageText,
+                              matchedUserKeywords, ads);
+            await message.SendMonitorMessageAsync(clientManager, logger, content);
+            return;
+        }
+
+        var matchedKeywords = KeywordMatchExtensions.MatchText(message.message, keywords);
+
+        if (matchedKeywords.Any(k => k.KeywordAction == KeywordAction.Exclude))
+        {
+            logger.LogInformation("消息包含排除关键词，跳过处理");
+            return;
+        }
+
+        matchedKeywords = matchedKeywords
+            .Where(k => k.KeywordAction == KeywordAction.Monitor)
+            .ToList();
+
+        if (matchedKeywords.Count == 0)
+        {
+            logger.LogInformation("无匹配关键词，跳过");
+            return;
+        }
+
+        var msgContent = message.FormatForMonitor(
+                             chatBase, user, messageText,
+                             matchedKeywords, ads);
+
+        await message.SendMonitorMessageAsync(clientManager, logger, msgContent);
+    }
+
+    public static async Task SendMonitorMessageAsync(this Message originalMessage, 
+        TelegramClientManager clientManager, ILogger logger, string content)
+    {
+        try
+        {
+            long sendChatId = clientManager.GetSendChatId();
+            if (sendChatId == 0)
+            {
+                logger.LogWarning("未设置发送目标");
+                return;
+            }
+
+            var updateManager = clientManager.GetUpdateManager();
+            var chat = updateManager.Chats.GetValueOrDefault(sendChatId);
+            if (chat == null)
+            {
+                logger.LogWarning("无法找到 ID 为 {Id} 的发送目标", sendChatId);
+                return;
+            }
+
+            var client = await clientManager.GetClientAsync();
+            var entities = client.HtmlToEntities(ref content, users: updateManager.Users);
+
+            await client.SendMessageAsync(
+                chat, content,
+                preview: Client.LinkPreview.Disabled,
+                entities: entities,
+                media: originalMessage.media?.ToInputMedia());
+        }
+        catch (Exception ex)
+        {
+            logger.LogError(ex, "发送监控消息失败");
+        }
     }
 }
