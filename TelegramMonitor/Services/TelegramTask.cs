@@ -34,7 +34,7 @@ public class TelegramTask
         try
         {
             var client = await _clientManager.GetClientAsync();
-            var manager = await _clientManager.GetUpdateManagerAsync(HandleUpdateAsync);
+            var manager = _clientManager.GetUpdateManagerAsync(HandleUpdateAsync);
             var dialogs = await client.Messages_GetAllDialogs();
             dialogs.CollectUsersChats(manager.Users, manager.Chats);
 
@@ -52,10 +52,10 @@ public class TelegramTask
         }
     }
 
-    public void StopTaskAsync()
+    public async Task StopTaskAsync()
     {
         _running = false;
-         _clientManager.StopUpdateManagerAsync();
+        await _clientManager.StopUpdateManagerAsync();
     }
 
     private async Task HandleUpdateAsync(Update update)

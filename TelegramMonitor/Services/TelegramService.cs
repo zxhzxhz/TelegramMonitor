@@ -20,19 +20,19 @@ public class TelegramService : IDynamicApiController, ITransient
     public async Task<LoginState> Proxy([FromBody] ProxyRequest req)
     {
         bool wasMonitoring = _task.IsMonitoring;
-        
+
         if (wasMonitoring)
         {
-             _task.StopTaskAsync();
+            await _task.StopTaskAsync();
         }
-        
+
         var loginState = await _mgr.SetProxyAsync(req.Type, req.Url);
-        
+
         if (loginState == LoginState.LoggedIn && wasMonitoring)
         {
             await _task.StartTaskAsync();
         }
-        
+
         return loginState;
     }
 
@@ -64,10 +64,10 @@ public class TelegramService : IDynamicApiController, ITransient
     }
 
     [HttpPost("stop")]
-    public void  Stop()
+    public async void Stop()
     {
         if (!_mgr.IsLoggedIn) throw Oops.Oh("未登录");
-         _task.StopTaskAsync();
+        await _task.StopTaskAsync();
     }
 }
 

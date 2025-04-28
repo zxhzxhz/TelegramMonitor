@@ -1,4 +1,6 @@
-﻿namespace TelegramMonitor;
+﻿using System.Threading.Tasks;
+
+namespace TelegramMonitor;
 
 public sealed class TelegramClientManager : ISingleton, IAsyncDisposable
 {
@@ -88,26 +90,29 @@ public sealed class TelegramClientManager : ISingleton, IAsyncDisposable
 
     public async Task<Client> GetClientAsync()
     {
-        if (!IsLoggedIn) throw new InvalidOperationException("未登录");
         if (_client.Disconnected) await _client.Login(_phone);
+        if (!IsLoggedIn) throw new InvalidOperationException("未登录");
+
         return _client;
     }
 
     public UpdateManager GetUpdateManager() => _manager;
 
-    public async Task<UpdateManager> GetUpdateManagerAsync(Func<Update, Task> onUpdate)
+    public UpdateManager GetUpdateManagerAsync(Func<Update, Task> onUpdate)
     {
         if (_manager != null) return _manager;
-        var cli = await GetClientAsync();
-        _manager = cli.WithUpdateManager(onUpdate);
+        _manager = _client.WithUpdateManager(onUpdate);
         return _manager;
     }
 
-    public void StopUpdateManagerAsync()
+    public async Task StopUpdateManagerAsync()
     {
         if (_manager != null)
         {
+            await _client.DisposeAsync();
             _manager = null;
+            _client = null;
+            await LoginAsync(_phone, string.Empty);
         }
     }
 
