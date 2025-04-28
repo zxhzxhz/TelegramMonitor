@@ -20,6 +20,10 @@
 - Telegram管理界面：http://localhost:5005/telegram.html
 - 可以通过Web界面配置账号、监控状态以及代理设置
 
+### 演示网站
+- 关键词管理演示：https://telegrammonitor.riniba.net/keywords.html
+- Telegram管理演示：https://telegrammonitor.riniba.net/telegram.html
+
 ### 效果图展示
 
 #### 关键词管理界面
