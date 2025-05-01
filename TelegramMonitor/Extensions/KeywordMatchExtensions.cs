@@ -25,10 +25,22 @@ public static class KeywordMatchExtensions
             .ToList();
     }
 
-    private static bool IsUserMatch(long userId, IReadOnlyCollection<string> names, string keyword) =>
-        !string.IsNullOrWhiteSpace(keyword) &&
-        (userId.ToString() == keyword ||
-         names.Any(n => n.Equals(keyword, StringComparison.OrdinalIgnoreCase)));
+    private static bool IsUserMatch(long userId, IReadOnlyCollection<string> names, string keyword)
+    {
+        if (string.IsNullOrWhiteSpace(keyword))
+            return false;
+
+        var normalizedKeyword = keyword.StartsWith("@") ? keyword[1..] : keyword;
+
+        if (userId.ToString() == normalizedKeyword)
+            return true;
+
+        return names.Any(name =>
+        {
+            var normalizedName = name.StartsWith("@") ? name[1..] : name;
+            return string.Equals(normalizedName, normalizedKeyword, StringComparison.OrdinalIgnoreCase);
+        });
+    }
 
     private static bool IsKeywordMatch(KeywordConfig cfg, string message) =>
         !string.IsNullOrWhiteSpace(cfg.KeywordContent) && cfg.KeywordType switch
