@@ -31,10 +31,12 @@ public static class LoggingSetup
             {
                 options.WithTraceId = true;
                 options.WithStackFrame = true;
-                options.FileNameRule = fileName =>
+                options.FileNameRule = _ =>
                 {
-                    string formattedFileName = string.Format(fileName, DateTime.Now, logLevel.ToString());
-                    return Path.Combine(AppDomain.CurrentDomain.BaseDirectory, formattedFileName);
+                    string logsDir = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "logs");
+                    Directory.CreateDirectory(logsDir);
+                    string fileName = $"{DateTime.Now:yyyy-MM-dd}_{logLevel}.log";
+                    return Path.Combine(logsDir, fileName);
                 };
                 options.WriteFilter = logMsg => logMsg.LogLevel == logLevel;
                 options.HandleWriteError = writeError =>
