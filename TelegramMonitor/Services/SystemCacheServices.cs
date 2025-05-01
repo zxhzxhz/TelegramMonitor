@@ -21,8 +21,6 @@ public class SystemCacheServices : ISingleton
         return keywords;
     }
 
-    /* ------------------ Keyword ------------------ */
-
     public Task<List<KeywordConfig>> GetKeywordsAsync() =>
         _cache.GetOrCreateAsync(KEYWORDS_KEY, async entry =>
         {
@@ -38,7 +36,7 @@ public class SystemCacheServices : ISingleton
             throw Oops.Oh("关键词已存在，请勿重复添加");
 
         keyword.Id = await _db.Insertable(keyword).ExecuteReturnIdentityAsync();
-        list.Add(keyword); 
+        list.Add(keyword);
         _cache.Set(KEYWORDS_KEY, list, TimeSpan.FromDays(1));
     }
 
@@ -95,8 +93,6 @@ public class SystemCacheServices : ISingleton
         _cache.Set(KEYWORDS_KEY, list, TimeSpan.FromDays(1));
         await SyncKeywordsFromDatabaseAsync();
     }
-
-    /* ------------------ Advertisement ------------------ */
 
     public void SetAdvertisement(List<string> ads) =>
         _cache.Set(AD_KEY, ads, TimeSpan.FromHours(1));
