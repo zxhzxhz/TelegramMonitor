@@ -1,6 +1,4 @@
-﻿using System.Threading.Tasks;
-
-namespace TelegramMonitor;
+﻿namespace TelegramMonitor;
 
 public sealed class TelegramClientManager : ISingleton, IAsyncDisposable
 {

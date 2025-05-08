@@ -2,8 +2,8 @@
 
 namespace TelegramMonitor;
 
-[JobDetail("telegram-advertisement-job", Description = "Telegram广告监控任务", GroupName = "monitor", Concurrent = true)]
-[PeriodSeconds(60, TriggerId = "telegram-ad-monitor-trigger", Description = "每分钟执行一次的广告监控任务", RunOnStart = true)]
+[JobDetail("telegram-advertisement-job", Description = "telegram-advertisement-job", GroupName = "monitor", Concurrent = true)]
+[PeriodMinutes(30, TriggerId = "telegram-ad-monitor-trigger", Description = "每30分钟执行一次的任务", RunOnStart = true)]
 public class TelegramAdvertisementJob : IJob
 {
     private readonly ILogger<TelegramAdvertisementJob> _logger;
@@ -25,7 +25,6 @@ public class TelegramAdvertisementJob : IJob
             dynamic clay = Clay.Parse(content);
             List<string> result = clay.result;
             _systemCacheServices.SetAdvertisement(result);
-            _logger.LogInformation($"广告数据：{string.Join(System.Environment.NewLine, result)}");
         }
         catch (Exception e)
         {

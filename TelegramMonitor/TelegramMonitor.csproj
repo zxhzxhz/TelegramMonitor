@@ -10,35 +10,15 @@
 		<CopyRazorGenerateFilesToPublishDirectory>true</CopyRazorGenerateFilesToPublishDirectory>
 		<CopyOutputSymbolsToPublishDirectory>true</CopyOutputSymbolsToPublishDirectory>
 		<CopyRazorFilesToPublishDirectory>true</CopyRazorFilesToPublishDirectory>
-		
 
 
 	</PropertyGroup>
 	<ItemGroup>
-		<PackageReference Include="Furion.Extras.Authentication.JwtBearer" Version="4.9.7.52" />
-		<PackageReference Include="Furion.Extras.ObjectMapper.Mapster" Version="4.9.7.52" />
-		<PackageReference Include="Furion.Pure" Version="4.9.7.52" />
-		<PackageReference Include="SqlSugarCore" Version="5.1.4.189" />
+		<PackageReference Include="Furion.Extras.ObjectMapper.Mapster" Version="4.9.7.60" />
+		<PackageReference Include="Furion.Pure" Version="4.9.7.60" />
+		<PackageReference Include="SqlSugarCore" Version="5.1.4.192" />
 		<PackageReference Include="WTelegramClient" Version="4.3.4" />
 		<PackageReference Include="xNetStandard" Version="1.1.0" />
-	</ItemGroup>
-	<ItemGroup>
-	  <Content Update="wwwroot\favicon.ico">
-	    <CopyToOutputDirectory>Always</CopyToOutputDirectory>
-	  </Content>
-	  <Content Update="wwwroot\keywords.html">
-	    <CopyToOutputDirectory>Always</CopyToOutputDirectory>
-	  </Content>
-	  <Content Update="wwwroot\keywords.js">
-	    <CopyToOutputDirectory>Always</CopyToOutputDirectory>
-	  </Content>
-	  <Content Update="wwwroot\telegram.html">
-	    <CopyToOutputDirectory>Always</CopyToOutputDirectory>
-	  </Content>
-	  <Content Update="wwwroot\telegram.js">
-	    <CopyToOutputDirectory>Always</CopyToOutputDirectory>
-	  </Content>
-		<ReadyToRunExcludeAssemblies Include="WTelegramClient.dll" />
 	</ItemGroup>
 
 </Project>
