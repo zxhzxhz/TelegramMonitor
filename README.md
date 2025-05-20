@@ -11,14 +11,8 @@
 - 最新发布版下载：https://github.com/Riniba/TelegramMonitor/releases/latest
 - 发布包提供常见的系统版本已经包含运行时。  
 - 如需其他可自行编译
-- 请注意 使用时需具备**全局代理**或能**直连 Telegram**。  
-- 如果使用的`v2rayN`或者`Clash`等代理软件，**请开启Tun**
-- 默认端口是5005，如需修改端口可在`appsettings.json`文件中修改`"Urls": "http://*:5005",` // 默认端口
-
-## Web管理界面
-- 关键词管理界面：http://localhost:5005/keywords.html
-- Telegram管理界面：http://localhost:5005/telegram.html
 - 可以通过Web界面配置账号、监控状态以及代理设置
+- Wiki教程 https://github.com/Riniba/TelegramMonitor/wiki
 
 ### 演示网站
 - 关键词管理演示：https://telegrammonitor.riniba.net/keywords.html
@@ -51,17 +45,14 @@
 - **强烈推荐使用 Linux 服务器进行长期挂机**：
   - 更稳定的网络连接和系统运行环境
   - 更低的资源占用
-  - 支持通过 Screen 或 Systemd 等工具实现后台持久化运行
   - 推荐使用 Ubuntu 20.04+ 或 Debian 11+ 系统
-- **服务器要求**：
-  - 最低配置：1核1G内存
-  - 推荐配置：2核2G内存
-  - 网络要求：能够正常访问 Telegram API
 
 ## 其他说明
 - 本软件免费无毒，可在虚拟机中运行进行长期挂机。
-- 有问题请联系 Telegram：[https://t.me/Riniba](https://t.me/Riniba)
-- Telegram交流群组 [https://t.me/RinibaGroup](https://t.me/RinibaGroup)
+- Telegram 联系作者：https://t.me/Riniba
+- Telegram 交流群：https://t.me/RinibaGroup
+
+- Telegram 发布频道：https://t.me/RinibaChannel
 
   
 
