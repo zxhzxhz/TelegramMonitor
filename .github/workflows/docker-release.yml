@@ -2,14 +2,17 @@ name: Docker Image
 
 on:
   workflow_run:
-    workflows: ["Build & Release (Self-contained / Single-file)"]
-    types: [completed]
-    branches: [main]
+    workflows:
+      - Build & Release (Self-contained / Single-file)
+    types:
+      - completed           
+    branches:
+      - main
 
 permissions:
   contents: read
   packages: write
-  actions:  read        
+  actions: read            
 
 env:
   IMAGE_NAME: ghcr.io/${{ github.repository_owner }}/telegrammonitor
@@ -20,68 +23,69 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-    
-      - uses: actions/checkout@v4
-        with: { fetch-depth: 1 }
+      
+      - name: Checkout repo
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 1
 
-    
-      - id: ls
-        name: List artifacts in Build & Release run
-        env: { GH_TOKEN: ${{ secrets.GITHUB_TOKEN }} }
+      
+      - id: list
+        name: List artifacts
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
-          gh api "repos/${{ github.repository }}/actions/runs/${{ github.event.workflow_run.id }}/artifacts" \
+          gh api repos/${{ github.repository }}/actions/runs/${{ github.event.workflow_run.id }}/artifacts \
             --jq '.artifacts[].name' > names.txt
-          NAMES=$(tr '\n' '|' < names.txt)
-          echo "Found: $NAMES"
-          echo "NAMES=$NAMES" >>"$GITHUB_OUTPUT"
+          echo "names=$(tr '\n' '|' < names.txt)" >> "$GITHUB_OUTPUT"
 
-    
-      - name: Download linux-64 artifact
-        if: ${{ contains(steps.ls.outputs.NAMES, 'linux-64') }}
+      
+      - name: Download linux-64
+        if: contains(steps.list.outputs.names, 'linux-64')
         uses: actions/download-artifact@v4
         with:
           name: linux-64
           path: out/linux-x64
           run-id: ${{ github.event.workflow_run.id }}
 
-    
-      - name: Download linux-arm64 artifact
-        if: ${{ contains(steps.ls.outputs.NAMES, 'linux-arm64') }}
+      
+      - name: Download linux-arm64
+        if: contains(steps.list.outputs.names, 'linux-arm64')
         uses: actions/download-artifact@v4
         with:
           name: linux-arm64
           path: out/linux-arm64
           run-id: ${{ github.event.workflow_run.id }}
 
-    
-      - name: Download version artifact
+      
+      - name: Download version
         uses: actions/download-artifact@v4
         with:
           name: version
           path: .
           run-id: ${{ github.event.workflow_run.id }}
 
-    
-      - name: Verify required artifacts
-        shell: bash
+      
+      - name: Verify artifacts
         run: |
-          [[ -f version.txt ]]                                   || { echo "::error::version artifact missing"; exit 1; }
-          [[ -f out/linux-x64/TelegramMonitor-linux-64.tar.gz ]] || { echo "::error::linux-64 artifact missing";   exit 1; }
-          [[ -f out/linux-arm64/TelegramMonitor-linux-arm64.tar.gz ]] || { echo "::error::linux-arm64 artifact missing"; exit 1; }
+          test -f version.txt                                         || { echo "::error::missing version.txt"; exit 1; }
+          test -f out/linux-x64/TelegramMonitor-linux-64.tar.gz       || { echo "::error::missing linux-64 tar"; exit 1; }
+          test -f out/linux-arm64/TelegramMonitor-linux-arm64.tar.gz  || { echo "::error::missing linux-arm64 tar"; exit 1; }
 
-    
+      
       - id: ver
         name: Read VERSION
-        shell: bash
-        run: echo "VERSION=$(cat version.txt)" >>"$GITHUB_OUTPUT"
+        run: echo "VERSION=$(cat version.txt)" >> "$GITHUB_OUTPUT"
 
-    
+      
       - name: Extract linux-x64
-        run: tar -xzf out/linux-x64/TelegramMonitor-linux-64.tar.gz   -C out/linux-x64   --strip-components=1
+        run: tar -xzf out/linux-x64/TelegramMonitor-linux-64.tar.gz \
+                -C out/linux-x64 --strip-components=1
       - name: Extract linux-arm64
-        run: tar -xzf out/linux-arm64/TelegramMonitor-linux-arm64.tar.gz -C out/linux-arm64 --strip-components=1
+        run: tar -xzf out/linux-arm64/TelegramMonitor-linux-arm64.tar.gz \
+                -C out/linux-arm64 --strip-components=1
 
-    
+      
       - uses: docker/setup-buildx-action@v3
       - uses: docker/login-action@v3
         with:
@@ -89,16 +93,16 @@ jobs:
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
 
-    
-      - uses: docker/metadata-action@v5
-        id: meta
+      
+      - id: meta
+        uses: docker/metadata-action@v5
         with:
           images: ${{ env.IMAGE_NAME }}
           tags: |
             type=semver,pattern={{version}},value=${{ steps.ver.outputs.VERSION }}
             type=raw,value=latest
 
-    
+      
       - uses: docker/build-push-action@v5
         with:
           context: .
