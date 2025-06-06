@@ -25,21 +25,21 @@ jobs:
         with:
           name: linux-64
           path: out/linux-x64
-          run-id: ${{ github.event.workflow_run.id }}
+          
           repository: ${{ github.repository }}
 
       - uses: actions/download-artifact@v4
         with:
           name: linux-arm64
           path: out/linux-arm64
-          run-id: ${{ github.event.workflow_run.id }}
+          
           repository: ${{ github.repository }}
 
       - uses: actions/download-artifact@v4
         with:
           name: version
           path: .
-          run-id: ${{ github.event.workflow_run.id }}
+          
           repository: ${{ github.repository }}
 
       - id: ver
