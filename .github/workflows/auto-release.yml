@@ -7,29 +7,31 @@ on:
       - '**.md'
       - '.gitignore'
       - '.editorconfig'
+permissions:
+  contents: write   
+  packages: read    
+env:
+  DOTNET_VERSION: '9.0.x'
+  CONFIGURATION:  Release
+  
+  PROJECT_PATH:   'TelegramMonitor/TelegramMonitor.csproj'
 
 concurrency:
   group: auto-release-${{ github.ref }}
   cancel-in-progress: true
-
-env:
-  DOTNET_VERSION: '9.0.x'
-  CONFIGURATION: Release
-
 jobs:
   prepare:
     runs-on: ubuntu-latest
     outputs:
-      VERSION: ${{ steps.version.outputs.VERSION }}
+      VERSION: ${{ steps.ver.outputs.VERSION }}
     steps:
       - name: Generate timestamp version
-        id: version
+        id: ver
         shell: bash
         run: |
           VERSION=$(TZ='Asia/Shanghai' date +'%Y.%m.%d.%H%M')
           echo "VERSION=$VERSION" >> "$GITHUB_OUTPUT"
           echo "Using version: $VERSION"
-
   build:
     needs: prepare
     runs-on: ubuntu-latest
@@ -38,72 +40,76 @@ jobs:
       fail-fast: false
       matrix:
         include:
+          
           - name: linux-64
             rid: linux-x64
-            artifact_name: TelegramMonitor-linux-64.tar.gz
-            pack_cmd: "tar -czf"
+            artifact: TelegramMonitor-linux-64.tar.gz
+            pack: "tar -czf"
           - name: linux-arm64
             rid: linux-arm64
-            artifact_name: TelegramMonitor-linux-arm64.tar.gz
-            pack_cmd: "tar -czf"
-
+            artifact: TelegramMonitor-linux-arm64.tar.gz
+            pack: "tar -czf"
+          
           - name: osx-64
             rid: osx-x64
-            artifact_name: TelegramMonitor-osx-64.zip
-            pack_cmd: "zip -r -q"
+            artifact: TelegramMonitor-osx-64.zip
+            pack: "zip -r -q"
           - name: osx-arm64
             rid: osx-arm64
-            artifact_name: TelegramMonitor-osx-arm64.zip
-            pack_cmd: "zip -r -q"
-
+            artifact: TelegramMonitor-osx-arm64.zip
+            pack: "zip -r -q"
+          
           - name: windows-32
             rid: win-x86
-            artifact_name: TelegramMonitor-windows-32.zip
-            pack_cmd: "zip -r -q"
+            artifact: TelegramMonitor-windows-32.zip
+            pack: "zip -r -q"
           - name: windows-64
             rid: win-x64
-            artifact_name: TelegramMonitor-windows-64.zip
-            pack_cmd: "zip -r -q"
+            artifact: TelegramMonitor-windows-64.zip
+            pack: "zip -r -q"
           - name: windows-arm64
             rid: win-arm64
-            artifact_name: TelegramMonitor-windows-arm64.zip
-            pack_cmd: "zip -r -q"
+            artifact: TelegramMonitor-windows-arm64.zip
+            pack: "zip -r -q"
 
     steps:
       - name: Checkout source
         uses: actions/checkout@v4
         with:
-          fetch-depth: 1         
+          fetch-depth: 1
 
       - name: Setup .NET SDK
         uses: actions/setup-dotnet@v4
         with:
           dotnet-version: ${{ env.DOTNET_VERSION }}
 
+      
       - name: Publish (self-contained single-file)
         shell: bash
         run: |
           set -euo pipefail
-          dotnet publish \
-            --configuration $CONFIGURATION \
-            -r ${{ matrix.rid }} \
+          dotnet publish "${{ env.PROJECT_PATH }}" \
+            --configuration "$CONFIGURATION" \
+            -r "${{ matrix.rid }}" \
             --self-contained true \
             -p:PublishSingleFile=true \
-            -o out/${{ matrix.rid }}
+            -o "out/${{ matrix.rid }}"
 
-          find out/${{ matrix.rid }} -type f \( -name '*.pdb' -o -name '*.xml' \) -delete
+          
+          find "out/${{ matrix.rid }}" -type f \( -name '*.pdb' -o -name '*.xml' \) -delete
 
-          cd out/${{ matrix.rid }}
-          ${{ matrix.pack_cmd }} ../${{ matrix.artifact_name }} .
+          
+          cd "out/${{ matrix.rid }}"
+          ${{ matrix.pack }} "../${{ matrix.artifact }}" .
           cd ../..
 
+      
       - name: Upload artifact
         uses: actions/upload-artifact@v4
         with:
           name: ${{ matrix.name }}
-          path: out/${{ matrix.artifact_name }}
+          path: out/${{ matrix.artifact }}
           retention-days: 3
-
   release:
     if: github.repository == 'Riniba/TelegramMonitor'
     needs: [prepare, build]
@@ -118,14 +124,14 @@ jobs:
       - name: Download artifacts
         uses: actions/download-artifact@v4
         with:
-          path: ./artifacts
+          path: artifacts
 
       - name: Collect meta
         id: meta
         shell: bash
         run: |
-          echo "DATETIME=$(TZ='Asia/Shanghai' date +'%Y年%m月%d日 %H:%M:%S')" >> $GITHUB_OUTPUT
-          echo "COMMIT_MSG=$(git log -1 --pretty=format:'%s')" >> $GITHUB_OUTPUT
+          echo "DATETIME=$(TZ='Asia/Shanghai' date +'%Y年%m月%d日 %H:%M:%S')" >> "$GITHUB_OUTPUT"
+          echo "COMMIT_MSG=$(git log -1 --pretty=format:'%s')" >> "$GITHUB_OUTPUT"
 
       - name: Create GitHub Release
         uses: softprops/action-gh-release@v1
@@ -135,18 +141,21 @@ jobs:
           tag_name: v${{ needs.prepare.outputs.VERSION }}
           name: "Release ${{ needs.prepare.outputs.VERSION }}"
           body: |
+            
 
             发布时间：${{ steps.meta.outputs.DATETIME }}
             发布者：${{ github.actor }}
 
+            
             ${{ steps.meta.outputs.COMMIT_MSG }}
 
+            
             - Windows (x64 / x86 / ARM64) — `.zip`
             - Linux  (x64 / ARM64)        — `.tar.gz`
             - macOS  (Intel / Apple Silicon) — `.zip`
 
+            
             请根据您的系统和架构下载对应文件，解压后直接运行即可。
-
           files: |
             artifacts/**/*.zip
             artifacts/**/*.tar.gz
