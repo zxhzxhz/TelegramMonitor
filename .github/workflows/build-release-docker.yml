@@ -33,7 +33,7 @@ jobs:
       - id: ver
         shell: bash
         run: |
-          VERSION=v$(TZ='Asia/Shanghai' date +'%Y.%m.%d.%H%M')
+          VERSION="1.0.0+$(TZ='Asia/Shanghai' date +'%Y%m%d%H%M')"
           echo "VERSION=$VERSION" >> "$GITHUB_OUTPUT"
           echo "$VERSION" > version.txt
       - uses: actions/upload-artifact@v4
@@ -50,11 +50,11 @@ jobs:
         include:
           - { name: linux-x64,      rid: linux-x64,   arch: amd64, artifact: TelegramMonitor-linux-x64.tar.gz,  pack: "tar -czf" }
           - { name: linux-arm64,    rid: linux-arm64, arch: arm64, artifact: TelegramMonitor-linux-arm64.tar.gz,pack: "tar -czf" }
-          - { name: osx-x64,        rid: osx-x64,     arch: osx64, artifact: TelegramMonitor-osx-x64.zip,       pack: "zip -r -q" }
-          - { name: osx-arm64,      rid: osx-arm64,   arch: osxarm64, artifact: TelegramMonitor-osx-arm64.zip, pack: "zip -r -q" }
-          - { name: windows-x86,    rid: win-x86,     arch: x86, artifact: TelegramMonitor-windows-x86.zip,     pack: "zip -r -q" }
-          - { name: windows-x64,    rid: win-x64,     arch: x64, artifact: TelegramMonitor-windows-x64.zip,     pack: "zip -r -q" }
-          - { name: windows-arm64,  rid: win-arm64,   arch: arm64, artifact: TelegramMonitor-windows-arm64.zip,pack: "zip -r -q" }
+          - { name: osx-x64,        rid: osx-x64,     artifact: TelegramMonitor-osx-x64.zip,       pack: "zip -r -q" }
+          - { name: osx-arm64,      rid: osx-arm64,   artifact: TelegramMonitor-osx-arm64.zip,     pack: "zip -r -q" }
+          - { name: windows-x86,    rid: win-x86,     artifact: TelegramMonitor-windows-x86.zip,   pack: "zip -r -q" }
+          - { name: windows-x64,    rid: win-x64,     artifact: TelegramMonitor-windows-x64.zip,   pack: "zip -r -q" }
+          - { name: windows-arm64,  rid: win-arm64,   artifact: TelegramMonitor-windows-arm64.zip,pack: "zip -r -q" }
     steps:
       - uses: actions/checkout@v4
         with:
