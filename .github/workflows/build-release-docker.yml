@@ -28,12 +28,15 @@ jobs:
     runs-on: ubuntu-latest
     outputs:
       VERSION: ${{ steps.ver.outputs.VERSION }}
+      IMAGE_NAME_LC: ${{ steps.ver.outputs.IMAGE_NAME_LC }}
     steps:
       - id: ver
         shell: bash
         run: |
           VERSION="1.$(TZ='Asia/Shanghai' date +'%Y%m%d.%H%M')"
+          IMAGE_NAME_LC=$(echo "ghcr.io/${{ github.repository_owner }}/telegrammonitor" | tr '[:upper:]' '[:lower:]')
           echo "VERSION=$VERSION" >> "$GITHUB_OUTPUT"
+          echo "IMAGE_NAME_LC=$IMAGE_NAME_LC" >> "$GITHUB_OUTPUT"
           echo "$VERSION" > version.txt
       - uses: actions/upload-artifact@v4
         with:
@@ -110,12 +113,13 @@ jobs:
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
       - run: |
+          IMAGE_NAME_LC=$(echo "$IMAGE_NAME" | tr '[:upper:]' '[:lower:]')
           docker buildx build \
             --platform linux/${{ matrix.arch }} \
             --build-arg BIN_NAME=TelegramMonitor \
             --build-arg TARGETARCH=${{ matrix.arch }} \
             --push \
-            -t ${{ env.IMAGE_NAME }}:${{ matrix.tag }} \
+            -t $IMAGE_NAME_LC:${{ matrix.tag }} \
             .
 
   docker-manifest:
@@ -135,11 +139,12 @@ jobs:
       - id: ver
         run: echo "VERSION=$(cat version.txt)" >> "$GITHUB_OUTPUT"
       - run: |
+          IMAGE_NAME_LC=$(echo "$IMAGE_NAME" | tr '[:upper:]' '[:lower:]')
           docker buildx imagetools create \
-            -t ${{ env.IMAGE_NAME }}:latest \
-            -t ${{ env.IMAGE_NAME }}:${{ steps.ver.outputs.VERSION }} \
-            ${{ env.IMAGE_NAME }}:amd64 \
-            ${{ env.IMAGE_NAME }}:arm64
+            -t $IMAGE_NAME_LC:latest \
+            -t $IMAGE_NAME_LC:${{ steps.ver.outputs.VERSION }} \
+            $IMAGE_NAME_LC:amd64 \
+            $IMAGE_NAME_LC:arm64
 
   release:
     if: github.repository == 'Riniba/TelegramMonitor'
