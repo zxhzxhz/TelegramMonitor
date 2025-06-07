@@ -138,6 +138,20 @@ jobs:
           path: .
       - id: ver
         run: echo "VERSION=$(cat version.txt)" >> "$GITHUB_OUTPUT"
+      - name: Wait for manifests to be ready
+        run: |
+          IMAGE_NAME_LC=$(echo "$IMAGE_NAME" | tr '[:upper:]' '[:lower:]')
+          for tag in amd64 arm64; do
+            echo "Waiting for manifest $IMAGE_NAME_LC:$tag to be ready..."
+            for i in {1..10}; do
+              if docker buildx imagetools inspect $IMAGE_NAME_LC:$tag &>/dev/null; then
+                echo "✅ Manifest for $tag is ready"
+                break
+              fi
+              echo "⏳ Not ready yet, waiting 6s..."
+              sleep 6
+            done
+          done
       - run: |
           IMAGE_NAME_LC=$(echo "$IMAGE_NAME" | tr '[:upper:]' '[:lower:]')
           docker buildx imagetools create \
