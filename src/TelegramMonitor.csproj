@@ -19,10 +19,10 @@
 		<DebugSymbols>false</DebugSymbols>
 	</PropertyGroup>
 	<ItemGroup>
-		<PackageReference Include="Furion.Extras.ObjectMapper.Mapster" Version="4.9.7.60" />
-		<PackageReference Include="Furion.Pure" Version="4.9.7.60" />
-		<PackageReference Include="SqlSugarCore" Version="5.1.4.192" />
-		<PackageReference Include="WTelegramClient" Version="4.3.4" />
+		<PackageReference Include="Furion.Extras.ObjectMapper.Mapster" Version="4.9.7.82" />
+		<PackageReference Include="Furion.Pure" Version="4.9.7.82" />
+		<PackageReference Include="SqlSugarCore" Version="5.1.4.195" />
+		<PackageReference Include="WTelegramClient" Version="4.3.5" />
 		<PackageReference Include="xNetStandard" Version="1.1.0" />
 	</ItemGroup>
 
