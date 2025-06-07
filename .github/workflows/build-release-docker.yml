@@ -32,7 +32,7 @@ jobs:
       - id: ver
         shell: bash
         run: |
-          VERSION="1.0.0+$(TZ='Asia/Shanghai' date +'%Y%m%d%H%M')"
+          VERSION="1.$(TZ='Asia/Shanghai' date +'%Y%m%d.%H%M')"
           echo "VERSION=$VERSION" >> "$GITHUB_OUTPUT"
           echo "$VERSION" > version.txt
       - uses: actions/upload-artifact@v4
@@ -79,6 +79,68 @@ jobs:
           path: out/${{ matrix.artifact }}
           retention-days: 3
 
+  docker-build:
+    needs: [prepare, build]
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        include:
+          - arch: amd64
+            artifact: linux-x64
+            tag: amd64
+          - arch: arm64
+            artifact: linux-arm64
+            tag: arm64
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/download-artifact@v4
+        with:
+          name: ${{ matrix.artifact }}
+          path: out/linux-${{ matrix.arch }}
+      - uses: actions/download-artifact@v4
+        with:
+          name: version
+          path: .
+      - run: |
+          tar -xzf out/linux-${{ matrix.arch }}/TelegramMonitor-${{ matrix.artifact }}.tar.gz -C out/linux-${{ matrix.arch }} --strip-components=1
+      - uses: docker/setup-buildx-action@v3
+      - uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+      - run: |
+          docker buildx build \
+            --platform linux/${{ matrix.arch }} \
+            --build-arg BIN_NAME=TelegramMonitor \
+            --build-arg TARGETARCH=${{ matrix.arch }} \
+            --push \
+            -t ${{ env.IMAGE_NAME }}:${{ matrix.tag }} \
+            .
+
+  docker-manifest:
+    needs: [docker-build, prepare]
+    runs-on: ubuntu-latest
+    steps:
+      - uses: docker/setup-buildx-action@v3
+      - uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+      - uses: actions/download-artifact@v4
+        with:
+          name: version
+          path: .
+      - id: ver
+        run: echo "VERSION=$(cat version.txt)" >> "$GITHUB_OUTPUT"
+      - run: |
+          docker buildx imagetools create \
+            -t ${{ env.IMAGE_NAME }}:latest \
+            -t ${{ env.IMAGE_NAME }}:${{ steps.ver.outputs.VERSION }} \
+            ${{ env.IMAGE_NAME }}:amd64 \
+            ${{ env.IMAGE_NAME }}:arm64
+
   release:
     if: github.repository == 'Riniba/TelegramMonitor'
     needs: [prepare, build]
@@ -124,64 +186,3 @@ jobs:
           files: |
             artifacts/**/*.zip
             artifacts/**/*.tar.gz
-
-  docker:
-    if: github.repository == 'Riniba/TelegramMonitor'
-    needs: [prepare, build]
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-
-      - uses: actions/download-artifact@v4
-        with:
-          name: linux-x64
-          path: out/linux-amd64
-
-      - uses: actions/download-artifact@v4
-        with:
-          name: linux-arm64
-          path: out/linux-arm64
-
-      - uses: actions/download-artifact@v4
-        with:
-          name: version
-          path: .
-
-      - run: |
-          test -f version.txt
-          test -f out/linux-amd64/TelegramMonitor-linux-x64.tar.gz
-          test -f out/linux-arm64/TelegramMonitor-linux-arm64.tar.gz
-
-      - id: ver
-        run: echo "VERSION=$(cat version.txt)" >> "$GITHUB_OUTPUT"
-
-      - run: tar -xzf out/linux-amd64/TelegramMonitor-linux-x64.tar.gz -C out/linux-amd64 --strip-components=1
-      - run: tar -xzf out/linux-arm64/TelegramMonitor-linux-arm64.tar.gz -C out/linux-arm64 --strip-components=1
-
-      - uses: docker/setup-buildx-action@v3
-
-      - uses: docker/login-action@v3
-        with:
-          registry: ghcr.io
-          username: ${{ github.actor }}
-          password: ${{ secrets.GITHUB_TOKEN }}
-
-      - id: meta
-        uses: docker/metadata-action@v5
-        with:
-          images: ${{ env.IMAGE_NAME }}
-          tags: |
-            type=semver,pattern={{version}},value=${{ steps.ver.outputs.VERSION }}
-            type=raw,value=latest
-
-      - uses: docker/build-push-action@v5
-        with:
-          context: .
-          file: ./Dockerfile
-          platforms: linux/amd64,linux/arm64
-          build-args: |
-            BIN_NAME=TelegramMonitor
-            TARGETARCH=amd64
-          push: true
-          tags: ${{ steps.meta.outputs.tags }}
-          labels: ${{ steps.meta.outputs.labels }}
