@@ -50,13 +50,13 @@ jobs:
     strategy:
       matrix:
         include:
-          - { name: linux-x64,      rid: linux-x64,   arch: amd64, artifact: TelegramMonitor-linux-x64.tar.gz,  pack: "tar -czf" }
-          - { name: linux-arm64,    rid: linux-arm64, arch: arm64, artifact: TelegramMonitor-linux-arm64.tar.gz,pack: "tar -czf" }
-          - { name: osx-x64,        rid: osx-x64,     artifact: TelegramMonitor-osx-x64.zip,       pack: "zip -r -q" }
-          - { name: osx-arm64,      rid: osx-arm64,   artifact: TelegramMonitor-osx-arm64.zip,     pack: "zip -r -q" }
-          - { name: windows-x86,    rid: win-x86,     artifact: TelegramMonitor-windows-x86.zip,   pack: "zip -r -q" }
-          - { name: windows-x64,    rid: win-x64,     artifact: TelegramMonitor-windows-x64.zip,   pack: "zip -r -q" }
-          - { name: windows-arm64,  rid: win-arm64,   artifact: TelegramMonitor-windows-arm64.zip,pack: "zip -r -q" }
+          - { name: linux-x64,      rid: linux-x64,   arch: amd64, artifact: TelegramMonitor-linux-x64.tar.gz,  pack: "tar -czf", docker: true }
+          - { name: linux-arm64,    rid: linux-arm64, arch: arm64, artifact: TelegramMonitor-linux-arm64.tar.gz,pack: "tar -czf", docker: true }
+          - { name: osx-x64,        rid: osx-x64,     artifact: TelegramMonitor-osx-x64.zip,       pack: "zip -r -q", docker: false }
+          - { name: osx-arm64,      rid: osx-arm64,   artifact: TelegramMonitor-osx-arm64.zip,     pack: "zip -r -q", docker: false }
+          - { name: windows-x86,    rid: win-x86,     artifact: TelegramMonitor-windows-x86.zip,   pack: "zip -r -q", docker: false }
+          - { name: windows-x64,    rid: win-x64,     artifact: TelegramMonitor-windows-x64.zip,   pack: "zip -r -q", docker: false }
+          - { name: windows-arm64,  rid: win-arm64,   artifact: TelegramMonitor-windows-arm64.zip,pack: "zip -r -q", docker: false }
     steps:
       - uses: actions/checkout@v4
         with:
@@ -88,12 +88,15 @@ jobs:
     strategy:
       matrix:
         include:
+          
           - arch: amd64
             artifact: linux-x64
             tag: amd64
+            platform: linux/amd64
           - arch: arm64
             artifact: linux-arm64
             tag: arm64
+            platform: linux/arm64
     steps:
       - uses: actions/checkout@v4
       - uses: actions/download-artifact@v4
@@ -106,6 +109,7 @@ jobs:
           path: .
       - run: |
           tar -xzf out/linux-${{ matrix.arch }}/TelegramMonitor-${{ matrix.artifact }}.tar.gz -C out/linux-${{ matrix.arch }} --strip-components=1
+          chmod +x out/linux-${{ matrix.arch }}/TelegramMonitor
       - uses: docker/setup-buildx-action@v3
       - uses: docker/login-action@v3
         with:
@@ -115,7 +119,7 @@ jobs:
       - run: |
           IMAGE_NAME_LC=$(echo "$IMAGE_NAME" | tr '[:upper:]' '[:lower:]')
           docker buildx build \
-            --platform linux/${{ matrix.arch }} \
+            --platform ${{ matrix.platform }} \
             --build-arg BIN_NAME=TelegramMonitor \
             --build-arg TARGETARCH=${{ matrix.arch }} \
             --push \
