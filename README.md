@@ -15,8 +15,8 @@
 - Wiki教程 https://github.com/Riniba/TelegramMonitor/wiki
 
 ### 演示网站
-- 关键词管理演示：https://telegrammonitor.riniba.net/keywords.html
-- Telegram管理演示：https://telegrammonitor.riniba.net/telegram.html
+- 关键词管理演示：https://telegrammonitor.riniba-demo.com/keywords.html
+- Telegram管理演示：https://telegrammonitor.riniba-demo.com/telegram.html
 
 ### 效果图展示
 
