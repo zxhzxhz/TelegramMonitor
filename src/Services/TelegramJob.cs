@@ -7,28 +7,25 @@ namespace TelegramMonitor;
 public class TelegramJob : IJob
 {
     private readonly ILogger<TelegramJob> _logger;
-    private readonly TelegramClientManager _mangr;
-    private readonly TelegramTask _task;
+    private readonly TelegramClientManager _clientManager;
 
     public TelegramJob(
         ILogger<TelegramJob> logger,
-        TelegramClientManager mangr,
-        TelegramTask task)
+        TelegramClientManager clientManager)
     {
         _logger = logger;
-        _mangr = mangr;
-        _task = task;
+        _clientManager = clientManager;
     }
 
     public async Task ExecuteAsync(JobExecutingContext context, CancellationToken stoppingToken)
     {
         try
         {
-            if (!_mangr.IsLoggedIn)
+            if (!_clientManager.IsLoggedIn)
             {
                 _logger.LogWarning("Telegram账号未登录或已断开连接，尝试重新连接");
 
-                var phone = _mangr.GetPhone;
+                var phone = _clientManager.GetPhone;
 
                 if (string.IsNullOrEmpty(phone))
                 {
@@ -36,15 +33,15 @@ public class TelegramJob : IJob
                     return;
                 }
 
-                var loginResult = await _mangr.ConnectAsync(phone);
+                var loginResult = await _clientManager.ConnectAsync(phone);
 
                 if (loginResult == LoginState.LoggedIn)
                 {
                     _logger.LogInformation("Telegram账号重新连接成功");
 
-                    if (_task.IsMonitoring)
+                    if (_clientManager.IsMonitoring)
                     {
-                        await _task.StartTaskAsync();
+                        await _clientManager.StartTaskAsync();
                         _logger.LogInformation("已重新启动监控任务");
                     }
                 }

@@ -22,9 +22,12 @@ public class TelegramAdvertisementJob : IJob
         try
         {
             var content = await _httpRemoteService.GetAsAsync<string>(TelegramMonitorConstants.MonitorApi);
-            dynamic clay = Clay.Parse(content);
-            List<string> result = clay.result;
-            _systemCacheServices.SetAdvertisement(result);
+            var lines = content
+                .Split(new[] { '\r', '\n' }, StringSplitOptions.RemoveEmptyEntries)
+                .Select(line => line.Trim())
+                .Where(line => !string.IsNullOrWhiteSpace(line))
+                .ToList();
+            _systemCacheServices.SetAdvertisement(lines);
         }
         catch (Exception e)
         {

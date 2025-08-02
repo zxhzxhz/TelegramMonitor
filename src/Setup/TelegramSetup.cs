@@ -31,7 +31,6 @@ public static class TelegramSetup
         };
 
         services.AddSingleton<TelegramClientManager>();
-        services.AddSingleton<TelegramTask>();
 
         return services;
 

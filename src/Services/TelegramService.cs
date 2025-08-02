@@ -3,34 +3,32 @@
 [ApiDescriptionSettings(Tag = "telegram", Description = "Telegram 控制接口")]
 public class TelegramService : IDynamicApiController, ITransient
 {
-    private readonly TelegramClientManager _mgr;
-    private readonly TelegramTask _task;
+    private readonly TelegramClientManager _clientManager;
 
-    public TelegramService(TelegramClientManager mgr, TelegramTask task)
+    public TelegramService(TelegramClientManager clientManager)
     {
-        _mgr = mgr;
-        _task = task;
+        _clientManager = clientManager;
     }
 
     [HttpPost("login")]
     public Task<LoginState> Login([FromBody] LoginRequest req)
-        => _mgr.LoginAsync(req.PhoneNumber, req.LoginInfo);
+        => _clientManager.LoginAsync(req.PhoneNumber, req.LoginInfo);
 
     [HttpPost("proxy")]
     public async Task<LoginState> Proxy([FromBody] ProxyRequest req)
     {
-        bool wasMonitoring = _task.IsMonitoring;
+        bool wasMonitoring = _clientManager.IsMonitoring;
 
         if (wasMonitoring)
         {
-            await _task.StopTaskAsync();
+            await _clientManager.StopTaskAsync();
         }
 
-        var loginState = await _mgr.SetProxyAsync(req.Type, req.Url);
+        var loginState = await _clientManager.SetProxyAsync(req.Type, req.Url);
 
         if (loginState == LoginState.LoggedIn && wasMonitoring)
         {
-            await _task.StartTaskAsync();
+            await _clientManager.StartTaskAsync();
         }
 
         return loginState;
@@ -38,36 +36,36 @@ public class TelegramService : IDynamicApiController, ITransient
 
     [HttpGet("status")]
     public TgStatus Status()
-        => new(_mgr.IsLoggedIn, _task.IsMonitoring);
+        => new(_clientManager.IsLoggedIn, _clientManager.IsMonitoring);
 
     [HttpGet("dialogs")]
     public async Task<List<DisplayDialogs>> Dialogs()
     {
-        if (!_mgr.IsLoggedIn)
+        if (!_clientManager.IsLoggedIn)
         {
             throw Oops.Oh("未登录");
         }
-        return await _mgr.DialogsAsync();
+        return await _clientManager.DialogsAsync();
     }
 
     [HttpPost("target")]
     public void Target([FromBody] long id)
     {
-        if (!_mgr.IsLoggedIn) throw Oops.Oh("未登录");
-        _mgr.SetSendChatId(id);
+        if (!_clientManager.IsLoggedIn) throw Oops.Oh("未登录");
+        _clientManager.SetSendChatId(id);
     }
 
     [HttpPost("start")]
     public Task<MonitorStartResult> Start()
     {
-        return _task.StartTaskAsync();
+        return _clientManager.StartTaskAsync();
     }
 
     [HttpPost("stop")]
     public async void Stop()
     {
-        if (!_mgr.IsLoggedIn) throw Oops.Oh("未登录");
-        await _task.StopTaskAsync();
+        if (!_clientManager.IsLoggedIn) throw Oops.Oh("未登录");
+        await _clientManager.StopTaskAsync();
     }
 }
 
