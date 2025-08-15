@@ -453,21 +453,81 @@ public sealed class TelegramClientManager : ISingleton, IAsyncDisposable
 
     private async Task HandleTelegramMessageAsync(TL.Message message)
     {
-        await EnsureUsersAndChatsFromMessageAsync(message);
+        if (string.IsNullOrWhiteSpace(message.message))
+        {
+            return;
+        }
+        var keywords = await _systemCacheServices.GetKeywordsAsync() ?? new List<KeywordConfig>();
+        var matchedKeywords = KeywordMatchExtensions.MatchText(message.message, keywords);
 
-        if (message.Peer is null)
+        if (matchedKeywords.Any(k => k.KeywordAction == KeywordAction.Exclude))
+        {
+            _logger.LogInformation("消息 {message}包含排除关键词 {keywords}，跳过",message.message, string.Join(",", matchedKeywords));
+            return;
+        }
+
+        matchedKeywords = matchedKeywords
+            .Where(k => k.KeywordAction == KeywordAction.Monitor)
+            .ToList();
+
+        if (matchedKeywords.Count == 0)
+        {
+            _logger.LogInformation("消息 {message} 无匹配关键词，跳过", message.message);
+            return;
+        }
+
+    if (message.Peer is null)
         {
             _logger.LogWarning("消息 {MessageId} 没有 Peer 信息，无法处理", message.ID);
             return;
         }
 
-        if (!TryResolvePeer(message.Peer, out var fromId, out var fromTitle, out var fromMain, out var fromUserNames))
+        await EnsureUsersAndChatsFromMessageAsync(message);
+
+        var sendEntity = BuildSendEntity(message);
+        if (sendEntity is null)
         {
-            _logger.LogWarning("未找到会话/频道 {PeerId}，无法处理消息", message.Peer.ID);
+            _logger.LogWarning("无法解析消息的来源或发送者，跳过");
             return;
         }
 
-        long sendId; string sendTitle, sendMain; IEnumerable<string> sendUserNames;
+        _logger.LogInformation(
+            "{Nick} (ID:{Uid}) 在 {Chat} (ID:{Chatid}) 中发送：{Text}",
+            sendEntity.SendTitle, sendEntity.SendId,
+            sendEntity.FromTitle, sendEntity.FromId, message.message);
+
+        var matchedUserKeywords = KeywordMatchExtensions.MatchUser(
+            sendEntity.SendId,
+            sendEntity.SendUserNames?.ToList() ?? new List<string>(),
+            keywords);
+
+        if (matchedUserKeywords.Any(k => k.KeywordAction == KeywordAction.Exclude))
+        {
+            _logger.LogInformation(" (ID:{Uid}) 在排除列表内，跳过", sendEntity.SendId);
+            return;
+        }
+
+        var finalKeywords = matchedUserKeywords.Any(k => k.KeywordAction == KeywordAction.Monitor)
+            ? (IReadOnlyList<KeywordConfig>)matchedUserKeywords
+            : matchedKeywords;
+
+        var msgContent = message.FormatForMonitor(
+            sendEntity,
+            finalKeywords, _systemCacheServices.GetAdvertisement());
+
+        await SendMonitorMessageAsync(message, msgContent);
+    }
+
+    private SendMessageEntity? BuildSendEntity(TL.Message message)
+    {
+        if (message.Peer is null) return null;
+
+        if (!TryResolvePeer(message.Peer, out var fromId, out var fromTitle, out var fromMain, out var fromUserNames))
+        {
+            return null;
+        }
+
+        long sendId; string sendTitle; string sendMain; IEnumerable<string> sendUserNames;
         if (message.From is null)
         {
             var isChannelPostFlag = message.flags.HasFlag(TL.Message.Flags.post);
@@ -486,6 +546,7 @@ public sealed class TelegramClientManager : ISingleton, IAsyncDisposable
             else if (message.Peer is TL.PeerUser && message.flags.HasFlag(TL.Message.Flags.out_))
             {
                 var me = _client.User;
+                if (me is null) return null;
 
                 sendId = me.ID;
                 sendTitle = $"{me.first_name} {me.last_name}".Trim();
@@ -502,11 +563,10 @@ public sealed class TelegramClientManager : ISingleton, IAsyncDisposable
         }
         else if (!TryResolvePeer(message.From, out sendId, out sendTitle, out sendMain, out sendUserNames))
         {
-            _logger.LogWarning("未找到发送者 {FromPeerId}，无法处理消息", message.From.ID);
-            return;
+            return null;
         }
 
-        var sendEntity = new SendMessageEntity
+        return new SendMessageEntity
         {
             FromId = fromId,
             FromTitle = fromTitle,
@@ -517,54 +577,6 @@ public sealed class TelegramClientManager : ISingleton, IAsyncDisposable
             SendTitle = sendTitle,
             SendUserNames = sendUserNames
         };
-
-        _logger.LogInformation(
-            "{Nick} (ID:{Uid}) 在 {Chat} (ID:{Chatid}) 中发送：{Text}",
-            sendEntity.SendTitle, sendEntity.SendId,
-            sendEntity.FromTitle, sendEntity.FromId, message.message);
-        var matchedUserKeywords = new List<KeywordConfig>();
-        var keywords = await _systemCacheServices.GetKeywordsAsync() ?? new List<KeywordConfig>();
-        matchedUserKeywords = KeywordMatchExtensions.MatchUser(
-                             sendEntity.SendId,
-                             sendEntity.SendUserNames?.ToList() ?? new List<string>(),
-                             keywords);
-        if (matchedUserKeywords.Any(k => k.KeywordAction == KeywordAction.Exclude))
-        {
-            _logger.LogInformation(" (ID:{Uid}) 在排除列表内，跳过", sendEntity.SendId);
-            return;
-        }
-        var messageText = _client.EntitiesToHtml(message.message, message.entities);
-        if (matchedUserKeywords.Any(k => k.KeywordAction == KeywordAction.Monitor))
-        {
-            var content = message.FormatForMonitor(
-                              sendEntity,
-                              matchedUserKeywords, _systemCacheServices.GetAdvertisement());
-            await SendMonitorMessageAsync(message, content);
-            return;
-        }
-        var matchedKeywords = KeywordMatchExtensions.MatchText(message.message, keywords);
-
-        if (matchedKeywords.Any(k => k.KeywordAction == KeywordAction.Exclude))
-        {
-            _logger.LogInformation("消息包含排除关键词，跳过处理");
-            return;
-        }
-
-        matchedKeywords = matchedKeywords
-            .Where(k => k.KeywordAction == KeywordAction.Monitor)
-            .ToList();
-
-        if (matchedKeywords.Count == 0)
-        {
-            _logger.LogInformation("无匹配关键词，跳过");
-            return;
-        }
-
-        var msgContent = message.FormatForMonitor(
-                             sendEntity,
-                             matchedKeywords, _systemCacheServices.GetAdvertisement());
-
-        await SendMonitorMessageAsync(message, msgContent);
     }
 
     private async Task SendMonitorMessageAsync(Message originalMessage, string content)
