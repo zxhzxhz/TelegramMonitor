@@ -40,8 +40,7 @@ public static class MessageFormatExtensions
         .AppendLine($"时间：`{message.Date.AddHours(8):yyyy-MM-dd HH:mm:ss}`")
         .AppendLine($"链接：[【直达】](https://t.me/{sendMessageEntity.FromMainUserName ?? $"c/{sendMessageEntity.FromId}"}/{message.id})")
         .AppendLine($"*命中关键词：* {keywordList}")
-        .AppendLine("`--------------------------------`")
-        .Append(adSection);
+        .AppendLine("`--------------------------------`");
         return sb.ToString();
     }
 
